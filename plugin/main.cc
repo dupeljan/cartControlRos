@@ -25,7 +25,7 @@
 #define L 0.04 // distance between body center and wheel center
 #define r 0.01905 // wheel radius
 
-
+#define DEBUG 1 // send debug info to std::out
 
 
 
@@ -123,16 +123,17 @@ namespace gazebo {
             // if stop - shitdown topic
             if (_msg->stop)
                 this->rosNode->shutdown();
+
+#if DEBUG == 1
             // Print velocityes
             std::cout<< "back: " + std::to_string(_msg->back) + '\n';
             std::cout<< "left: " + std::to_string(_msg->left) + '\n';
             std::cout<< "right: " + std::to_string(_msg->right) + '\n';
+#endif
             // set velocityes
-           // leftJoint->SetVelocity(0, _msg->data / r);
-          //  if(_msg->data == 11.0)
-            //    this->rosNode->shutdown();
-            //rightJoint->SetVelocity(0, _msg->data / r);
-            //backJoint->SetVelocity(0, _msg->data / r);
+            leftJoint->SetVelocity(0, _msg->left / r);
+            rightJoint->SetVelocity(0, _msg->right / r);
+            backJoint->SetVelocity(0, _msg->back / r);
         }
 
         /// \brief ROS helper function that processes messages

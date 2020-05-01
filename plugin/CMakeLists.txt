@@ -21,6 +21,12 @@ include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
+#build client
+add_executable(client client.cc)
+target_link_libraries(client ${roscpp_LIBRARIES} )
+add_dependencies(client ${PROJECT_NAME}_generate_messages)
+
+#build libruary
 add_library(main SHARED main.cc)
 add_dependencies(main ${PROJECT_NAME}_generate_messages)
 target_link_libraries(main ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
