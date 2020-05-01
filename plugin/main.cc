@@ -12,6 +12,9 @@
 #include <gazebo/common/common.hh>
 #include <iostream>
 #include <vector>
+#include <string>
+
+#include <CartConrolPlugin/Velocity.h>
 
 #include <thread>
 #include "ros/ros.h"
@@ -100,13 +103,13 @@ namespace gazebo {
 
             // Create a named topic, and subscribe to it.
             ros::SubscribeOptions so =
-              ros::SubscribeOptions::create<std_msgs::Float32>(
-                  "/" + this->model->GetName() + "/vel_cmd",
+              ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
+                  "/" + this->model->GetName() + "/velocity",
                   1,
                   boost::bind(&OmniPlatformPlugin::OnRosMsg, this, _1),
                   ros::VoidPtr(), &this->rosQueue);
             this->rosSub = this->rosNode->subscribe(so);
-
+            std::cout<<"Just create topic\n";
             // Spin up the queue helper thread.
             this->rosQueueThread =
               std::thread(std::bind(&OmniPlatformPlugin::QueueThread, this));
@@ -115,11 +118,19 @@ namespace gazebo {
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
         /// of the Velodyne.
-        public: void OnRosMsg(const std_msgs::Float32ConstPtr &_msg)
+        public: void OnRosMsg(const CartConrolPlugin::VelocityConstPtr &_msg)
         {
-            leftJoint->SetVelocity(0, _msg->data / r);
-            if(_msg->data == 11.0)
+            // if stop - shitdown topic
+            if (_msg->stop)
                 this->rosNode->shutdown();
+            // Print velocityes
+            std::cout<< "back: " + std::to_string(_msg->back) + '\n';
+            std::cout<< "left: " + std::to_string(_msg->left) + '\n';
+            std::cout<< "right: " + std::to_string(_msg->right) + '\n';
+            // set velocityes
+           // leftJoint->SetVelocity(0, _msg->data / r);
+          //  if(_msg->data == 11.0)
+            //    this->rosNode->shutdown();
             //rightJoint->SetVelocity(0, _msg->data / r);
             //backJoint->SetVelocity(0, _msg->data / r);
         }

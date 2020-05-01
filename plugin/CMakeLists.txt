@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(CartConrolPlugin)
 
+# Generate code from our own custom messages
+# find_package catkin and genmsg, required for message generation macros
+find_package(catkin REQUIRED)
+find_package(genmsg REQUIRED)
+# Enumerate our custom messages files
+add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES msg/Velocity.msg)
+generate_messages(DEPENDENCIES)
+
 #find ros
 find_package(roscpp REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -14,5 +22,6 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 add_library(main SHARED main.cc)
+add_dependencies(main ${PROJECT_NAME}_generate_messages)
 target_link_libraries(main ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")
