@@ -15,6 +15,7 @@
 #include <string>
 
 #include <CartConrolPlugin/Velocity.h>
+#include <CartConrolPlugin/Position.h>
 
 #include <thread>
 #include "ros/ros.h"
@@ -24,10 +25,22 @@
 
 #define L 0.04 // distance between body center and wheel center
 #define r 0.01905 // wheel radius
+#define pi2 6.28318530717958623199592693708837032318115234375 // long double two = 2; long double mOne = -1; printf("%1.70Lf\n", (long double) two * acos(mOne));
 
 #define DEBUG 1 // send debug info to std::out
 
 
+double normalizeRadian(double radian) {
+    radian = fmod(radian, pi2);
+    if (radian < 0) radian += pi2;
+    return radian;
+}
+
+std::string positionToString(const CartConrolPlugin::Position p){
+    return  "x " + std::to_string(p.x) +'\n' +
+            "y " + std::to_string(p.y) + '\n' +
+            "angle " + std::to_string(p.angle) + '\n';
+}
 
 
 namespace gazebo {
@@ -62,7 +75,14 @@ namespace gazebo {
 
         private: physics::WorldPtr world;
 
+        // Cart position publisher
+        private: ros::Publisher positionPub;
 
+        // Thread of pos pulishing
+        private: std::thread rosPosThread;
+
+        // Rate var pointer for publishing delay
+        private:  std::unique_ptr<ros::Rate> loop_rate;
 
         public: void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) {
             // Store the pointer to the model
@@ -73,10 +93,7 @@ namespace gazebo {
             this->rightJoint = model->GetJoint("right_joint");
 
             this->world = _parent->GetWorld();
-            //this->indicator = this->world->GetModel("wood_cube_2_5cm");
-            //this->indicatorPose.reset(new math::Pose());
-            //this->indicator->SetGravityMode(false);
-            //this->indicator->Fini();
+
 
             std::srand(std::time(0));
 
@@ -97,23 +114,35 @@ namespace gazebo {
                   ros::init_options::NoSigintHandler);
             }
 
-            // Create our ROS node. This acts in a similar manner to
-            // the Gazebo node
+            // Create our ROS node.
             this->rosNode.reset(new ros::NodeHandle("gazebo_client"));
 
+            auto velocityTopicName = "/" + this->model->GetName() + "/velocity";
             // Create a named topic, and subscribe to it.
             ros::SubscribeOptions so =
               ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
-                  "/" + this->model->GetName() + "/velocity",
+                  velocityTopicName,
                   1,
                   boost::bind(&OmniPlatformPlugin::OnRosMsg, this, _1),
                   ros::VoidPtr(), &this->rosQueue);
             this->rosSub = this->rosNode->subscribe(so);
-            std::cout<<"Just create topic\n";
+#if DEBUG == 1
+            std::cout<<"Create topic "+ velocityTopicName +"\n";
+#endif
             // Spin up the queue helper thread.
             this->rosQueueThread =
               std::thread(std::bind(&OmniPlatformPlugin::QueueThread, this));
+
+            // Create publisher
+            auto posTopicName = "/"+this->model->GetName() +"/pos";
+            this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posTopicName, 1000);
+            // Set loop rate
+            loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
+            // Run routine - public robot position
+            this->rosPosThread =
+                    std::thread(std::bind(&OmniPlatformPlugin::SendPosition,this));
         }
+
 
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
@@ -145,6 +174,41 @@ namespace gazebo {
             this->rosQueue.callAvailable(ros::WallDuration(timeout));
           }
         }
+
+    private: void SendPosition(){
+            int count = 0;
+            CartConrolPlugin::Position p;
+            while (ros::ok())
+             {
+
+               /**
+                * This is a message object. You stuff it with data, and then publish it.
+                */
+
+               p.x = this->model->RelativePose().Pos().X();
+               p.y = this->model->RelativePose().Pos().Y();
+               p.angle = this->model->RelativePose().Rot().Yaw();
+
+
+#if DEBUG == 1
+               std::cout << positionToString(p) << "------------\n";
+#endif
+
+               /**
+                * The publish() function is how you send messages. The parameter
+                * is the message object. The type of this object must agree with the type
+                * given as a template parameter to the advertise<>() call, as was done
+                * in the constructor above.
+                */
+
+               this->positionPub.publish(p);
+
+               ros::spinOnce();
+
+               this->loop_rate->sleep();
+               ++count;
+             }
+    }
 
 
 
