@@ -21,12 +21,25 @@ include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
-#build qt ex
-add_subdirectory(client)
+#find qt
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 #build client
-add_executable(client client.cc)
-target_link_libraries(client ${roscpp_LIBRARIES} )
+#add_executable(client client.cc)
+add_executable(client 
+		client/main.cpp 
+		client/mainwindow.cpp 
+		client/mainwindow.h 
+		client/mainwindow.ui 
+		client/resources.qrc
+		client/cartcontrollerwidget.cpp
+		client/cartcontrollerwidget.h
+	)
+target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)
 
 #build libruary
