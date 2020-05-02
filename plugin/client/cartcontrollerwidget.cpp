@@ -44,7 +44,8 @@ void CartControllerWidget::mouseMoveEvent(QMouseEvent *e)
 {
     if(mousePressed)
     {
-
+        QPointF pt = mapToScene(e->pos());
+        qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
     }
 
 }
