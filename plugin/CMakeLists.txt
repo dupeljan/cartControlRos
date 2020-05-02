@@ -28,6 +28,15 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
+
+#build libruary
+add_library(main SHARED main.cc)
+add_dependencies(main ${PROJECT_NAME}_generate_messages)
+target_link_libraries(main ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")
+
+
+set(CMAKE_BUILD_TYPE Debug)
 #build client
 #add_executable(client client.cc)
 add_executable(client 
@@ -43,9 +52,3 @@ add_executable(client
 	)
 target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)
-
-#build libruary
-add_library(main SHARED main.cc)
-add_dependencies(main ${PROJECT_NAME}_generate_messages)
-target_link_libraries(main ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")

@@ -5,6 +5,8 @@
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QMouseEvent>
+#include <QPoint>
+#include "rospublisher.h"
 
 class CartControllerWidget : public QGraphicsView
 {
@@ -19,7 +21,9 @@ public slots:
     void mouseMoveEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *e);
 private:
+    QPoint posToVector(QPointF p);
     QGraphicsScene * scene;
+    RosPublisher pub;
     bool mousePressed;
 };
 

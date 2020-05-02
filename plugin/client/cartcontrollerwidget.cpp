@@ -30,6 +30,8 @@ void CartControllerWidget::mousePressEvent(QMouseEvent * e)
     double rad = 1;
     QPointF pt = mapToScene(e->pos());
     qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
+    // Send position to cart
+    pub.setVelocity(posToVector(pt));
     //std::cout << std::to_string(pt.x()) << ' ' << std::to_string(pt.y()) << '\n';
     //scene->addEllipse(pt.x()-rad, pt.y()-rad, rad*2.0, rad*2.0,
     //QPen(), QBrush(Qt::SolidPattern));
@@ -49,3 +51,10 @@ void CartControllerWidget::mouseMoveEvent(QMouseEvent *e)
     }
 
 }
+
+
+QPoint CartControllerWidget::posToVector(QPointF p)
+{
+    return QPoint(p.x() - width() / 2, p.y() - height() / 2);
+}
+

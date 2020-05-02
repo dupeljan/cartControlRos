@@ -12,7 +12,7 @@ class RosPublisher
 {
 private:
     // Node handler
-    ros::NodeHandle node;
+    std::unique_ptr<ros::NodeHandle> node;
     // Publisher for velocity
     ros::Publisher VelocityPub;
     // Ros loop rate
@@ -29,7 +29,7 @@ private:
     void sendRoutine();
 public:
      // Set velocity which publishing in SendRoutine
-    void setVelocity(CartConrolPlugin v);
+    void setVelocity(CartConrolPlugin::Velocity v);
     void setVelocity(QPoint p);
 
     RosPublisher();
