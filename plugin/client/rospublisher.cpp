@@ -20,14 +20,18 @@ RosPublisher::RosPublisher()
     velocity.back = 0.0f;
     velocity.left = 0.0f;
     velocity.right = 0.0f;
+    //Fetch std::future object associated with promise
+    exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
+    futureObj = exitSignal->get_future();
     // run publisher
-    auto x = std::thread(std::bind(&RosPublisher::sendRoutine,this));
+    velocityPubThread = std::thread(&RosPublisher::sendRoutine,this,std::move(futureObj));
 }
 
 RosPublisher::~RosPublisher()
 {
     // Stop sendRoutine
-    node->shutdown();
+    exitSignal->set_value();
+    velocityPubThread.join();
 }
 
 std::string RosPublisher::velocityToString(const CartConrolPlugin::Velocity v){
@@ -36,14 +40,13 @@ std::string RosPublisher::velocityToString(const CartConrolPlugin::Velocity v){
             "back " + std::to_string(v.back) + '\n';
 }
 
-void RosPublisher::sendRoutine()
+void RosPublisher::sendRoutine(std::future<void> futureObj)
 {
-    // Shut down when node shut down
-    while (ros::ok())
-         {
 
+    while (futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
+         {
           // Access to shared velocity
-          const std::lock_guard<std::mutex> lock(velocityMutex);
+          //const std::lock_guard<std::mutex> lock(velocityMutex);
           qDebug((velocityToString(velocity) + "-----------\n").c_str());
 
           // Send velocity to the topic
@@ -52,16 +55,22 @@ void RosPublisher::sendRoutine()
           // Iterate
           ros::spinOnce();
           loopRate->sleep();
-         }
+       }
 }
 
 void RosPublisher::setVelocity(CartConrolPlugin::Velocity v)
 {
     // Access to shared velocity
-    const std::lock_guard<std::mutex> lock(velocityMutex);
+    //const std::lock_guard<std::mutex> lock(velocityMutex);
+    //Set the value in promise
+    exitSignal->set_value();
+    velocityPubThread.join();
     // Set it
     velocity = v;
-
+    // start again
+    exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
+    futureObj = exitSignal->get_future();
+    velocityPubThread = std::thread(&RosPublisher::sendRoutine,this,std::move(futureObj));
 }
 
 void RosPublisher::setVelocity(QPoint p)
@@ -72,5 +81,8 @@ void RosPublisher::setVelocity(QPoint p)
         s = 10.0;
     else
         s = -10.0;
+    v.back = s;
+    v.left = s;
+    v.right = s;
     setVelocity(v);
 }

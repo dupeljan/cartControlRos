@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "cartcontrollerwidget.h"
+
 #include <QMouseEvent>
 #include <QGridLayout>
 #include <iostream>
@@ -13,9 +13,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     QWidget *mainWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout();
-    auto controller = new CartControllerWidget();
+    controller = new CartControllerWidget();
     //controller->setLayout(ui->centralWidget->layout());
-    gridLayout->addWidget(new CartControllerWidget(),2,2);
+    gridLayout->addWidget(controller,2,2);
 
     mainWidget->setLayout(gridLayout);
     setCentralWidget(mainWidget);

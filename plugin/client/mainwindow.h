@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "rospublisher.h"
+#include "cartcontrollerwidget.h"
 
 namespace Ui {
 class MainWindow;
@@ -20,6 +22,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    CartControllerWidget *controller;
 
 };
 

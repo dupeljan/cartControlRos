@@ -8,6 +8,8 @@
 CartControllerWidget::CartControllerWidget(QGraphicsView *parent)
         : QGraphicsView(parent)
 {
+    // Setup publisher
+    pub = std::unique_ptr<RosPublisher>(new RosPublisher());
     mousePressed = false;
     scene = new QGraphicsScene();
     this->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
@@ -21,8 +23,14 @@ CartControllerWidget::CartControllerWidget(QGraphicsView *parent)
     // Draw main point
     int shift = 10;
     scene->addEllipse(QRectF(width()/2-shift,height()/2-shift,
-                            2*shift,2*shift));
+                             2*shift,2*shift));
 }
+/*
+void CartControllerWidget::release()
+{
+    pub.~RosPublisher();
+}
+*/
 
 void CartControllerWidget::mousePressEvent(QMouseEvent * e)
 {
@@ -31,7 +39,7 @@ void CartControllerWidget::mousePressEvent(QMouseEvent * e)
     QPointF pt = mapToScene(e->pos());
     qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
     // Send position to cart
-    pub.setVelocity(posToVector(pt));
+    pub->setVelocity(posToVector(pt));
     //std::cout << std::to_string(pt.x()) << ' ' << std::to_string(pt.y()) << '\n';
     //scene->addEllipse(pt.x()-rad, pt.y()-rad, rad*2.0, rad*2.0,
     //QPen(), QBrush(Qt::SolidPattern));
