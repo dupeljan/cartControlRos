@@ -49,6 +49,8 @@ add_executable(client
 		client/cartcontrollerwidget.h
                 client/rospublisher.cpp
                 client/rospublisher.h
+                client/cartkinematic.cpp
+                client/cartkinematic.h
 	)
 target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)

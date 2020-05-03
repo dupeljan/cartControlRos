@@ -37,7 +37,7 @@ private:
 public:
      // Set velocity which publishing in SendRoutine
     void setVelocity(CartConrolPlugin::Velocity v);
-    void setVelocity(QPoint p);
+    void setVelocity(QPointF p);
 
     RosPublisher();
     ~RosPublisher();

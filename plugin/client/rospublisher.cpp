@@ -1,4 +1,5 @@
 #include "rospublisher.h"
+#include "cartkinematic.h"
 #include <QDebug>
 #include <functional>
 
@@ -42,11 +43,9 @@ std::string RosPublisher::velocityToString(const CartConrolPlugin::Velocity v){
 
 void RosPublisher::sendRoutine(std::future<void> futureObj)
 {
-
+    // while not set exitSignal
     while (futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
          {
-          // Access to shared velocity
-          //const std::lock_guard<std::mutex> lock(velocityMutex);
           qDebug((velocityToString(velocity) + "-----------\n").c_str());
 
           // Send velocity to the topic
@@ -60,29 +59,30 @@ void RosPublisher::sendRoutine(std::future<void> futureObj)
 
 void RosPublisher::setVelocity(CartConrolPlugin::Velocity v)
 {
-    // Access to shared velocity
-    //const std::lock_guard<std::mutex> lock(velocityMutex);
+    // Stop sendRoutine
     //Set the value in promise
     exitSignal->set_value();
     velocityPubThread.join();
-    // Set it
+    // Set velocity
     velocity = v;
-    // start again
+    // start  sendRoutine again
     exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
     futureObj = exitSignal->get_future();
     velocityPubThread = std::thread(&RosPublisher::sendRoutine,this,std::move(futureObj));
 }
 
-void RosPublisher::setVelocity(QPoint p)
+void RosPublisher::setVelocity(QPointF p)
 {
     CartConrolPlugin::Velocity v;
-    float s;
-    if(p.x() > 0)
-        s = 10.0;
-    else
-        s = -10.0;
-    v.back = s;
-    v.left = s;
-    v.right = s;
+    // Transform to velocity and send
+   // p.setX(0);
+    //p.setY(1);
+    setVelocity(CartKinematic::getVelocity(p));
+    /*
+    v.left = -1.;
+    v.back = 0.;
+    v.right = 1.;
     setVelocity(v);
+    */
+
 }

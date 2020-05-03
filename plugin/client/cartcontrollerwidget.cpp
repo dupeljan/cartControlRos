@@ -25,12 +25,6 @@ CartControllerWidget::CartControllerWidget(QGraphicsView *parent)
     scene->addEllipse(QRectF(width()/2-shift,height()/2-shift,
                              2*shift,2*shift));
 }
-/*
-void CartControllerWidget::release()
-{
-    pub.~RosPublisher();
-}
-*/
 
 void CartControllerWidget::mousePressEvent(QMouseEvent * e)
 {
@@ -56,13 +50,13 @@ void CartControllerWidget::mouseMoveEvent(QMouseEvent *e)
     {
         QPointF pt = mapToScene(e->pos());
         qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
+        pub->setVelocity(posToVector(pt));
     }
-
 }
 
 
-QPoint CartControllerWidget::posToVector(QPointF p)
+QPointF CartControllerWidget::posToVector(QPointF p)
 {
-    return QPoint(p.x() - width() / 2, p.y() - height() / 2);
+    return QPointF(p.x() - width() / 2, p.y() - height() / 2);
 }
 
