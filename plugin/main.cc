@@ -27,7 +27,7 @@
 #define r 0.01905 // wheel radius
 #define pi2 6.28318530717958623199592693708837032318115234375 // long double two = 2; long double mOne = -1; printf("%1.70Lf\n", (long double) two * acos(mOne));
 
-#define DEBUG 1 // send debug info to std::out
+#define DEBUG 0 // send debug info to std::out
 
 
 double normalizeRadian(double radian) {
@@ -78,11 +78,17 @@ namespace gazebo {
         // Cart position publisher
         private: ros::Publisher positionPub;
 
+        // Cart actual velocity publisher
+        private: ros::Publisher velocityPub;
+
         // Thread of pos pulishing
         private: std::thread rosPosThread;
 
         // Rate var pointer for publishing delay
         private:  std::unique_ptr<ros::Rate> loop_rate;
+
+        // Pid variable for wheel control
+        private: common::PID pid;
 
         public: void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) {
             // Store the pointer to the model
@@ -94,9 +100,19 @@ namespace gazebo {
 
             this->world = _parent->GetWorld();
 
+            // Setup pid
+            this->pid = common::PID(3.0, 0.0, 0.0);
+            // Apply the P-controller to the joints
+            this->model->GetJointController()->SetVelocityPID(
+                  this->leftJoint->GetScopedName(), this->pid);
 
-            std::srand(std::time(0));
+            this->model->GetJointController()->SetVelocityPID(
+                  this->rightJoint->GetScopedName(), this->pid);
 
+            this->model->GetJointController()->SetVelocityPID(
+                  this->backJoint->GetScopedName(), this->pid);
+
+            
 
 
             // Listen to the update event. This event is broadcast every
@@ -133,17 +149,33 @@ namespace gazebo {
             this->rosQueueThread =
               std::thread(std::bind(&OmniPlatformPlugin::QueueThread, this));
 
+            //
+            //
             // Create publisher
-            auto posTopicName = "/"+this->model->GetName() +"/pos";
-            this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posTopicName, 1000);
+            auto posPubTopicName = "/"+this->model->GetName() +"/pos";
+            auto velocityPubTopicName = "/" + this->model->GetName() +"/actual_velocity";
+            
+            this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
+            this->velocityPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
             this->rosPosThread =
-                    std::thread(std::bind(&OmniPlatformPlugin::SendPosition,this));
+                    std::thread(std::bind(&OmniPlatformPlugin::PublisherLoop,this));
         }
-
-
+/*
+        private: template <class T> void  createPublisher(srd::string topicName)
+        {
+           // Create publisher
+            auto posTopicName = "/"+this->model->GetName() +"/pos";
+            this->positionPub = this->rosNode->advertise<T>(posTopicName, 1000);
+            // Set loop rate
+            loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
+            // Run routine - public robot position
+            this->rosPosThread =
+                    std::thread(std::bind(&OmniPlatformPlugin::PublisherLoop,this));
+        }
+*/
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
         /// of the Velodyne.
@@ -175,19 +207,22 @@ namespace gazebo {
           }
         }
 
-    private: void SendPosition(){
+    private: void PublisherLoop(){
             int count = 0;
             CartConrolPlugin::Position p;
+            CartConrolPlugin::Velocity v;
             while (ros::ok())
              {
 
-               /**
-                * This is a message object. You stuff it with data, and then publish it.
-                */
+              // Get position
+              p.x = this->model->RelativePose().Pos().X();
+              p.y = this->model->RelativePose().Pos().Y();
+              p.angle = this->model->RelativePose().Rot().Yaw();
 
-               p.x = this->model->RelativePose().Pos().X();
-               p.y = this->model->RelativePose().Pos().Y();
-               p.angle = this->model->RelativePose().Rot().Yaw();
+              // Get velocity
+              v.left = this->leftJoint->GetVelocity(0) * r;
+              v.right = this->rightJoint->GetVelocity(0) * r  ;
+              v.back = this->backJoint->GetVelocity(0) * r ;
 
 
 #if DEBUG == 1
@@ -202,6 +237,7 @@ namespace gazebo {
                 */
 
                this->positionPub.publish(p);
+               this->velocityPub.publish(v);
 
                ros::spinOnce();
 
