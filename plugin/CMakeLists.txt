@@ -3,8 +3,12 @@ project(CartConrolPlugin)
 
 # Generate code from our own custom messages
 # find_package catkin and genmsg, required for message generation macros
-find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure)
+find_package(catkin REQUIRED COMPONENTS 
+	dynamic_reconfigure
+	roscpp
+	rospy)
 find_package(genmsg REQUIRED)
+find_package(dynamic_reconfigure REQUIRED)
 # Enumerate our custom messages files
 add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES msg/Velocity.msg msg/Position.msg)
 generate_messages(DEPENDENCIES)
@@ -12,6 +16,12 @@ generate_messages(DEPENDENCIES)
 generate_dynamic_reconfigure_options(
   cfg/PIDconf.cfg
   #...
+)
+
+
+include_directories(
+# include
+  ${catkin_INCLUDE_DIRS}
 )
 
 #find ros
@@ -64,5 +74,4 @@ add_dependencies(client ${PROJECT_NAME}_generate_messages)
 # Build cfg server
 add_executable(drfServer  drcfServer.cpp)
 add_dependencies(drfServer ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
-target_link_libraries(drfServer ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
-set_target_properties(drfServer PROPERTIES LINKER_LANGUAGE CMAKE_py_LINK_EXECUTABLE)
+target_link_libraries(drfServer ${Boost_LIBRARIES} ${roscpp_LIBRARIES} ${catkin_LIBRARIES})
