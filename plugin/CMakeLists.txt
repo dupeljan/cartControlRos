@@ -47,8 +47,11 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets)
 #build libruary
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")
 add_library(main SHARED main.cc)
-add_dependencies(main ${PROJECT_NAME}_generate_messages)
-target_link_libraries(main ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${roscpp_LIBRARIES})
+add_dependencies(main ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
+target_link_libraries(main  ${GAZEBO_LIBRARIES} 
+							${Boost_LIBRARIES} 
+							${roscpp_LIBRARIES}
+							${catkin_LIBRARIES})
 
 
 

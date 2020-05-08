@@ -17,6 +17,9 @@
 #include <CartConrolPlugin/Velocity.h>
 #include <CartConrolPlugin/Position.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <CartConrolPlugin/CartConfig.h>
+
 #include <thread>
 #include "ros/ros.h"
 #include "ros/callback_queue.h"
@@ -28,6 +31,7 @@
 #define pi2 6.28318530717958623199592693708837032318115234375 // long double two = 2; long double mOne = -1; printf("%1.70Lf\n", (long double) two * acos(mOne));
 
 #define DEBUG 0 // send debug info to std::out
+#define DYNAMIC_PID_RECONFIG_ENABLE 1 // Enable dynamic reconfig server for pid values
 
 
 double normalizeRadian(double radian) {
@@ -89,6 +93,15 @@ namespace gazebo {
 
         // Pid variable for wheel control
         private: common::PID pid;
+
+        // Thread for dynamic reconf server
+        private: std::thread dynamicReconfThread;
+
+        // Server for dynamic retonfigure PID values
+       // private: dynamic_reconfigure::Server<CartConrolPlugin::CartConfig> server;
+
+        // Callback for dynamic reconfigure server
+        //private: dynamic_reconfigure::Server<CartConrolPlugin::CartConfig>::CallbackType f;
 
         public: void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) {
             // Store the pointer to the model
@@ -160,22 +173,20 @@ namespace gazebo {
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
+
             this->rosPosThread =
                     std::thread(std::bind(&OmniPlatformPlugin::PublisherLoop,this));
+
+            ///
+            ///
+            ///
+            /// Create reconf server thread loop
+#if DYNAMIC_PID_RECONFIG_ENABLE
+            this->dynamicReconfThread =
+                    std::thread(std::bind(&OmniPlatformPlugin::dynamicReconfLoop,this));
+#endif
         }
-/*
-        private: template <class T> void  createPublisher(srd::string topicName)
-        {
-           // Create publisher
-            auto posTopicName = "/"+this->model->GetName() +"/pos";
-            this->positionPub = this->rosNode->advertise<T>(posTopicName, 1000);
-            // Set loop rate
-            loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
-            // Run routine - public robot position
-            this->rosPosThread =
-                    std::thread(std::bind(&OmniPlatformPlugin::PublisherLoop,this));
-        }
-*/
+
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
         /// of the Velodyne.
@@ -244,6 +255,27 @@ namespace gazebo {
                this->loop_rate->sleep();
                ++count;
              }
+    }
+
+    private: void dynamicReconfLoop()
+    {
+            dynamic_reconfigure::Server<CartConrolPlugin::CartConfig> server;
+            dynamic_reconfigure::Server<CartConrolPlugin::CartConfig>::CallbackType f;
+
+            f = boost::bind(&OmniPlatformPlugin::callbackDynamicReconf,this, _1, _2);
+
+            server.setCallback(f);
+
+            ROS_INFO("Spinning node");
+            ros::spin();
+    }
+
+    void callbackDynamicReconf(CartConrolPlugin::CartConfig &config, uint32_t level) {
+       ROS_INFO("Reconfigure Request: %d %f %s %s %d",
+                config.int_param, config.double_param,
+                config.str_param.c_str(),
+                config.bool_param?"True":"False",
+                config.size);
     }
 
 

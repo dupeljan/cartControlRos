@@ -1,4 +1,5 @@
 #!/bin/bash
+git add plugin/cfg/*
 git add plugin/msg/*
 git add plugin/client/*
 git add add.sh
