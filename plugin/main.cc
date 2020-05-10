@@ -117,7 +117,7 @@ namespace gazebo {
             this->world = _parent->GetWorld();
 
             // Setup pid
-            this->pid = common::PID(100.0, 20.0, 0.0);
+            this->pid = common::PID(5e-4, 0.0, 0.0);
             // Apply the P-controller to the joints
             this->applyPID();
 
@@ -135,12 +135,12 @@ namespace gazebo {
             {
               int argc = 0;
               char **argv = NULL;
-              ros::init(argc, argv, "gazebo_client",
+              ros::init(argc, argv, "gazebo_cart_plugin",
                   ros::init_options::NoSigintHandler);
             }
 
             // Create our ROS node.
-            this->rosNode.reset(new ros::NodeHandle("gazebo_client"));
+            this->rosNode.reset(new ros::NodeHandle("gazebo_cart_plugin"));
 
             auto velocityTopicName = "/" + this->model->GetName() + "/velocity";
             // Create a named topic, and subscribe to it.
@@ -163,7 +163,7 @@ namespace gazebo {
             // Create publisher
             auto posPubTopicName = "/"+this->model->GetName() +"/pos";
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
-            auto velocityDifPubTopicName = "/" + this->model->GetName() + "/diff_velocity";
+            //auto velocityDifPubTopicName = "/" + this->model->GetName() + "/diff_velocity";
             
             this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
             this->velocityPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
@@ -179,7 +179,7 @@ namespace gazebo {
             ///
             ///
             /// Create reconf server thread loop
-#if DYNAMIC_PID_RECONFIG_ENABLE
+#if DYNAMIC_PID_RECONFIG_ENABLE == 1
             this->dynamicReconfThread =
                     std::thread(std::bind(&OmniPlatformPlugin::dynamicReconfLoop,this));
 #endif
@@ -201,9 +201,17 @@ namespace gazebo {
             std::cout<< "right: " + std::to_string(_msg->right) + '\n';
 #endif
             // set velocityes
-            leftJoint->SetVelocity(0, _msg->left / r);
-            rightJoint->SetVelocity(0, _msg->right / r);
-            backJoint->SetVelocity(0, _msg->back / r);
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->leftJoint->GetScopedName(), _msg->left/r);
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->rightJoint->GetScopedName(), _msg->right/r);
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->backJoint->GetScopedName(), _msg->back/r);
+
+            //this->model->GetJointController()->Update();
+           // leftJoint->SetVelocityTarget(0, _msg->left / r);
+           // rightJoint->SetVelocityTarget(0, _msg->right / r);
+           // backJoint->SetVelocityTarget(0, _msg->back / r);
         }
 
         /// \brief ROS helper function that processes messages
@@ -229,10 +237,21 @@ namespace gazebo {
               p.y = this->model->RelativePose().Pos().Y();
               p.angle = this->model->RelativePose().Rot().Yaw();
 
+              /*
+              auto getVel =  this->model->GetJointController()->GetVelocities();
+              v.left = getVel["robot_mobile_wheel_3_omni_open_base::left_joint"];
+              v.right = getVel["robot_mobile_wheel_3_omni_open_base::right_joint"];
+              v.back = getVel["robot_mobile_wheel_3_omni_open_base::back_joint"];
+              for(auto it = getVel.begin(); it != getVel.end(); it++ )
+                  std::cout << it->first  // string (key)
+                               << ':'
+                               << it->second   // string's value
+                               << std::endl ;
+               */
               // Get velocity
-              v.left = this->leftJoint->GetVelocity(0) * r;
-              v.right = this->rightJoint->GetVelocity(0) * r  ;
-              v.back = this->backJoint->GetVelocity(0) * r ;
+             v.left = this->leftJoint->GetVelocity(0) * r;
+             v.right = this->rightJoint->GetVelocity(0) * r  ;
+             v.back = this->backJoint->GetVelocity(0) * r ;
 
               // Get velocity diffenence
               //vDiff =
