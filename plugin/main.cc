@@ -85,6 +85,9 @@ namespace gazebo {
         // Cart actual velocity publisher
         private: ros::Publisher velocityPub;
 
+        // Difference between actial speed and required
+        //private: ros::Publisher velocidyDiffPub;
+
         // Thread of pos pulishing
         private: std::thread rosPosThread;
 
@@ -114,16 +117,9 @@ namespace gazebo {
             this->world = _parent->GetWorld();
 
             // Setup pid
-            this->pid = common::PID(3.0, 0.0, 0.0);
+            this->pid = common::PID(100.0, 20.0, 0.0);
             // Apply the P-controller to the joints
-            this->model->GetJointController()->SetVelocityPID(
-                  this->leftJoint->GetScopedName(), this->pid);
-
-            this->model->GetJointController()->SetVelocityPID(
-                  this->rightJoint->GetScopedName(), this->pid);
-
-            this->model->GetJointController()->SetVelocityPID(
-                  this->backJoint->GetScopedName(), this->pid);
+            this->applyPID();
 
             
 
@@ -166,10 +162,12 @@ namespace gazebo {
             //
             // Create publisher
             auto posPubTopicName = "/"+this->model->GetName() +"/pos";
-            auto velocityPubTopicName = "/" + this->model->GetName() +"/actual_velocity";
+            auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
+            auto velocityDifPubTopicName = "/" + this->model->GetName() + "/diff_velocity";
             
             this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
             this->velocityPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
+            //this->velocidyDiffPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityDifPubTopicName,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
@@ -222,6 +220,7 @@ namespace gazebo {
             int count = 0;
             CartConrolPlugin::Position p;
             CartConrolPlugin::Velocity v;
+            //CartConrolPlugin::Velocity vDiff;
             while (ros::ok())
              {
 
@@ -235,6 +234,8 @@ namespace gazebo {
               v.right = this->rightJoint->GetVelocity(0) * r  ;
               v.back = this->backJoint->GetVelocity(0) * r ;
 
+              // Get velocity diffenence
+              //vDiff =
 
 #if DEBUG == 1
                std::cout << positionToString(p) << "------------\n";
@@ -270,15 +271,31 @@ namespace gazebo {
             ros::spin();
     }
 
-    void callbackDynamicReconf(CartConrolPlugin::CartConfig &config, uint32_t level) {
-       ROS_INFO("Reconfigure Request: %d %f %s %s %d",
-                config.int_param, config.double_param,
-                config.str_param.c_str(),
-                config.bool_param?"True":"False",
-                config.size);
+    private: void callbackDynamicReconf(CartConrolPlugin::CartConfig &config, uint32_t level) {
+       ROS_INFO("Reconfigure Request: P - %f I - %f D - %f ",
+                config.p_gain,
+                config.i_gain,
+                config.d_gain
+             );
+       this->pid.SetPGain(config.p_gain);
+       this->pid.SetIGain(config.i_gain);
+       this->pid.SetDGain(config.d_gain);
+
+       applyPID();
     }
 
+    private: void applyPID()
+    {
+        // Apply the P-controller to the joints
+        this->model->GetJointController()->SetVelocityPID(
+              this->leftJoint->GetScopedName(), this->pid);
 
+        this->model->GetJointController()->SetVelocityPID(
+              this->rightJoint->GetScopedName(), this->pid);
+
+        this->model->GetJointController()->SetVelocityPID(
+              this->backJoint->GetScopedName(), this->pid);
+    }
 
     };
 

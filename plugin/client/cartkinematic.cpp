@@ -11,7 +11,7 @@ CartConrolPlugin::Velocity CartKinematic::getVelocity(QPointF p)
     p.setX(p.x() / len);
     p.setY(p.y() / len);
     // Strech velocity
-    double strechC = 0.05;
+    double strechC = 0.01;
     p.setX( p.x() * strechC);
     p.setY( p.y() * strechC);
     // Do transformations
