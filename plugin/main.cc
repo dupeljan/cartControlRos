@@ -13,6 +13,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <ctime>
+
 
 #include <CartConrolPlugin/Velocity.h>
 #include <CartConrolPlugin/Position.h>
@@ -95,10 +97,19 @@ namespace gazebo {
         private:  std::unique_ptr<ros::Rate> loop_rate;
 
         // Pid variable for wheel control
-        private: common::PID pid;
+        private: common::PID pidWheels;
+
+        // Pid varieble for cart rotation
+        private: common::PID pidCartRot;
+
+        // Time for rotation pid
+        private: std::clock_t time;
+
 
         // Thread for dynamic reconf server
         private: std::thread dynamicReconfThread;
+
+
 
         // Server for dynamic retonfigure PID values
        // private: dynamic_reconfigure::Server<CartConrolPlugin::CartConfig> server;
@@ -117,9 +128,15 @@ namespace gazebo {
             this->world = _parent->GetWorld();
 
             // Setup pid
-            this->pid = common::PID(5e-4, 0.0, 0.0);
+            this->pidWheels = common::PID(5e-4, 0.0, 0.0);
             // Apply the P-controller to the joints
             this->applyPID();
+
+            this->pidCartRot = common::PID(30.0,25.0,6.0);
+
+            this->time = std::clock();
+
+
 
             
 
@@ -200,13 +217,13 @@ namespace gazebo {
             std::cout<< "left: " + std::to_string(_msg->left) + '\n';
             std::cout<< "right: " + std::to_string(_msg->right) + '\n';
 #endif
+
+
+
             // set velocityes
-            this->model->GetJointController()->
-                    SetVelocityTarget( this->leftJoint->GetScopedName(), _msg->left/r);
-            this->model->GetJointController()->
-                    SetVelocityTarget( this->rightJoint->GetScopedName(), _msg->right/r);
-            this->model->GetJointController()->
-                    SetVelocityTarget( this->backJoint->GetScopedName(), _msg->back/r);
+            setTargetVelocity(_msg->left/r,_msg->right/r,_msg->back/r);
+
+
 
             //this->model->GetJointController()->Update();
            // leftJoint->SetVelocityTarget(0, _msg->left / r);
@@ -222,6 +239,25 @@ namespace gazebo {
           {
             this->rosQueue.callAvailable(ros::WallDuration(timeout));
           }
+        }
+        // Set target velocity to the cart
+    private: void setTargetVelocity(double left, double right, double back)
+        {
+            // Add rotation impact
+            // Rotation correction
+
+            auto err =   this->model->RelativePose().Rot().Yaw();
+            auto rc = pidCartRot.Update(err,common::Time( 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC) );
+            this->time = std::clock();
+
+            std::cout <<std::to_string(err) <<' ' << std::to_string(rc) << '\n';
+
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->leftJoint->GetScopedName(), rc + left);
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->rightJoint->GetScopedName(), rc + right);
+            this->model->GetJointController()->
+                    SetVelocityTarget( this->backJoint->GetScopedName(), rc + back);
         }
 
     private: void PublisherLoop(){
@@ -291,29 +327,40 @@ namespace gazebo {
     }
 
     private: void callbackDynamicReconf(CartConrolPlugin::CartConfig &config, uint32_t level) {
-       ROS_INFO("Reconfigure Request: P - %f I - %f D - %f ",
+       ROS_INFO("Reconfigure Request: P - %f I - %f D - %f level %d",
                 config.p_gain,
                 config.i_gain,
-                config.d_gain
+                config.d_gain,
+                level
              );
-       this->pid.SetPGain(config.p_gain);
-       this->pid.SetIGain(config.i_gain);
-       this->pid.SetDGain(config.d_gain);
+       if (!level)
+       {
+           this->pidWheels.SetPGain(config.p_gain);
+           this->pidWheels.SetIGain(config.i_gain);
+           this->pidWheels.SetDGain(config.d_gain);
+           applyPID();
+       }
+       else
+       {
+           this->pidCartRot.SetPGain(config.prc_gain);
+           this->pidCartRot.SetIGain(config.irc_gain);
+           this->pidCartRot.SetDGain(config.drc_gain);
+       }
 
-       applyPID();
+
     }
 
     private: void applyPID()
     {
         // Apply the P-controller to the joints
         this->model->GetJointController()->SetVelocityPID(
-              this->leftJoint->GetScopedName(), this->pid);
+              this->leftJoint->GetScopedName(), this->pidWheels);
 
         this->model->GetJointController()->SetVelocityPID(
-              this->rightJoint->GetScopedName(), this->pid);
+              this->rightJoint->GetScopedName(), this->pidWheels);
 
         this->model->GetJointController()->SetVelocityPID(
-              this->backJoint->GetScopedName(), this->pid);
+              this->backJoint->GetScopedName(), this->pidWheels);
     }
 
     };

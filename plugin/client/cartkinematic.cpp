@@ -17,7 +17,7 @@ CartConrolPlugin::Velocity CartKinematic::getVelocity(QPointF p)
     // Do transformations
     double vVector[wheelCount];
     for(int i = 0; i < wheelCount; i++ )
-        vVector[i] = (- std::sin(fi +alpha[i] ) * p.x() + std::cos(fi + alpha[i] ) * p.y()) / r;
+        vVector[i] = (- std::sin(fi +alpha[i] ) * p.x() + std::cos(fi + alpha[i] ) * p.y()  ) / r;
     v.left = vVector[0];
     v.back = vVector[1];
     v.right = vVector[2];
