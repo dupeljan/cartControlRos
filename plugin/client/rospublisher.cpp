@@ -46,7 +46,9 @@ void RosPublisher::sendRoutine(std::future<void> futureObj)
     // while not set exitSignal
     while (futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
          {
+#if DEBUG == 1
           qDebug((velocityToString(velocity) + "-----------\n").c_str());
+#endif
 
           // Send velocity to the topic
           VelocityPub.publish(velocity);

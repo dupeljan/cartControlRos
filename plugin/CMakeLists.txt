@@ -9,14 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
 	rospy)
 find_package(genmsg REQUIRED)
 find_package(dynamic_reconfigure REQUIRED)
-# Enumerate our custom messages files
-add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES msg/Velocity.msg msg/Position.msg)
-generate_messages(DEPENDENCIES)
-# Generate dynamic reconf
-generate_dynamic_reconfigure_options(
-  cfg/PIDconf.cfg
-  #...
-)
+
+
 
 
 include_directories(
@@ -27,8 +21,22 @@ include_directories(
 #find ros
 find_package(roscpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 include_directories(${roscpp_INCLUDE_DIRS})
 include_directories(${std_msgs_INCLUDE_DIRS})
+
+# Enumerate our custom messages files
+add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES
+                                        msg/Velocity.msg
+                                        msg/Position.msg
+                                        msg/PathMsg.msg)
+generate_messages(DEPENDENCIES geometry_msgs)
+
+# Generate dynamic reconf
+generate_dynamic_reconfigure_options(
+  cfg/PIDconf.cfg
+  #...
+)
 
 #find gazebo
 find_package(gazebo REQUIRED)
@@ -59,22 +67,29 @@ set(CMAKE_BUILD_TYPE Debug)
 #build client
 #add_executable(client client.cc)
 add_executable(client 
-		client/main.cpp 
-		client/mainwindow.cpp 
-		client/mainwindow.h 
-		client/mainwindow.ui 
-		client/resources.qrc
-		client/cartcontrollerwidget.cpp
-		client/cartcontrollerwidget.h
+                client/main.cpp
+                client/mainwindow.cpp
+                client/mainwindow.h
+                client/mainwindow.ui
+                client/resources.qrc
+                client/cartcontrollerwidget.cpp
+                client/cartcontrollerwidget.h
                 client/rospublisher.cpp
                 client/rospublisher.h
                 client/cartkinematic.cpp
                 client/cartkinematic.h
+                client/cartpathsetter.cpp
+                client/cartpathsetter.h
+                client/commonheader.h
+                client/cartpathabstract.cpp
+                client/cartpathabstract.h
+                client/cartpathgetter.cpp
+                client/cartpathgetter.h
 	)
 target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)
 
 # Build cfg server
-add_executable(drfServer  drcfServer.cpp)
-add_dependencies(drfServer ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
-target_link_libraries(drfServer ${Boost_LIBRARIES} ${roscpp_LIBRARIES} ${catkin_LIBRARIES})
+#dd_executable(drfServer  drcfServer.cpp)
+#add_dependencies(drfServer ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
+#target_link_libraries(drfServer ${Boost_LIBRARIES} ${roscpp_LIBRARIES} ${catkin_LIBRARIES})

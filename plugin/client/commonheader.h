@@ -1,0 +1,6 @@
+#ifndef COMMONHEADER_H
+#define COMMONHEADER_H
+
+#define DEBUG 0
+
+#endif // COMMONHEADER_H

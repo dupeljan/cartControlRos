@@ -1,6 +1,8 @@
 #ifndef ROSPUBLISHER_H
 #define ROSPUBLISHER_H
 
+#include "commonheader.h"
+
 #include "ros/ros.h"
 #include <CartConrolPlugin/Velocity.h>
 #include <QPoint>

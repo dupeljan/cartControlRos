@@ -31,7 +31,9 @@ void CartControllerWidget::mousePressEvent(QMouseEvent * e)
     mousePressed = true;
     double rad = 1;
     QPointF pt = mapToScene(e->pos());
+#if DEBUG == 1
     qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
+#endif
     // Send position to cart
     pub->setVelocity(posToVector(pt));
     //std::cout << std::to_string(pt.x()) << ' ' << std::to_string(pt.y()) << '\n';
@@ -49,7 +51,9 @@ void CartControllerWidget::mouseMoveEvent(QMouseEvent *e)
     if(mousePressed)
     {
         QPointF pt = mapToScene(e->pos());
+#if DEBUG == 1
         qDebug((std::to_string(pt.x()) + ' ' + std::to_string(pt.y()) + '\n').c_str());
+#endif
         pub->setVelocity(posToVector(pt));
     }
 }

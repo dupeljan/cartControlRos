@@ -18,6 +18,7 @@
 
 #include <CartConrolPlugin/Velocity.h>
 #include <CartConrolPlugin/Position.h>
+#include <CartConrolPlugin/PathMsg.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <CartConrolPlugin/CartConfig.h>
@@ -53,17 +54,46 @@ namespace gazebo {
 
     class OmniPlatformPlugin : public ModelPlugin {
         // ros members
-        /// \brief A node use for ROS transport
-        private: std::unique_ptr<ros::NodeHandle> rosNode;
+        ///  A node use for ROS transport for publication
+        private: std::unique_ptr<ros::NodeHandle> rosNodePub;
 
-        /// \brief A ROS subscriber
+        /// A node use for ROS transport for publication
+        private: std::unique_ptr<ros::NodeHandle> rosNodeSub;
+
+        /// A ROS subscriber
         private: ros::Subscriber rosSub;
 
-        /// \brief A ROS callbackqueue that helps process messages
+        /// A ROS callbackqueue that helps process messages
         private: ros::CallbackQueue rosQueue;
 
-        /// \brief A thread the keeps running the rosQueue
+        ///  A thread the keeps running the rosQueue
         private: std::thread rosQueueThread;
+
+        /// Struct for subsciber manipulating
+        private: struct SubscibeOptions
+        {
+        public:
+
+            void pushBack(ros::SubscribeOptions op)
+            {
+                so.push_back(op);
+                i = (i == -1)? 0 : i;
+            }
+            ros::SubscribeOptions getOption()
+            {
+                return so[i];
+            }
+            /// move ptr to next subsribe option;
+            void next()
+            {
+                if (i != -1)
+                    i = (i+1) % so.size();
+            }
+        private:
+            std::vector<ros::SubscribeOptions> so;
+            int i = -1;
+
+        } soStruct;
 
         // end ros members
 
@@ -132,7 +162,7 @@ namespace gazebo {
             // Apply the P-controller to the joints
             this->applyPID();
 
-            this->pidCartRot = common::PID(30.0,25.0,6.0);
+            this->pidCartRot = common::PID(50.0,25.0,6.0);
 
             this->time = std::clock();
 
@@ -156,18 +186,38 @@ namespace gazebo {
                   ros::init_options::NoSigintHandler);
             }
 
-            // Create our ROS node.
-            this->rosNode.reset(new ros::NodeHandle("gazebo_cart_plugin"));
+            // Create our ROS nodes
+            this->rosNodeSub.reset(new ros::NodeHandle("gazebo_cart_plugin_sub"));
+            this->rosNodePub.reset(new ros::NodeHandle("gazebo_cart_plugin_pub"));
 
             auto velocityTopicName = "/" + this->model->GetName() + "/velocity";
+            auto pathTopicName = "/" + this->model->GetName() + "/path";
             // Create a named topic, and subscribe to it.
-            ros::SubscribeOptions so =
-              ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
-                  velocityTopicName,
-                  1,
-                  boost::bind(&OmniPlatformPlugin::OnRosMsg, this, _1),
-                  ros::VoidPtr(), &this->rosQueue);
-            this->rosSub = this->rosNode->subscribe(so);
+            this->soStruct.pushBack(
+                        ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
+                            velocityTopicName,
+                            1,
+                            boost::bind(&OmniPlatformPlugin::OnRosMsgVel, this, _1),
+                            ros::VoidPtr(), &this->rosQueue));
+            this->soStruct.pushBack(
+                        ros::SubscribeOptions::create<CartConrolPlugin::PathMsg>(
+                            pathTopicName,
+                            1,
+                            boost::bind(&OmniPlatformPlugin::OnRosMsgPath, this, _1),
+                            ros::VoidPtr(), &this->rosQueue)
+                        );
+            this->soStruct.next();
+            this->subscribe();
+
+            /*
+            auto so = ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
+                        velocityTopicName,
+                        1,
+                        boost::bind(&OmniPlatformPlugin::OnRosMsg, this, _1),
+                        ros::VoidPtr(), &this->rosQueue);
+            this->rosSub = this->rosNodeSub->subscribe(so);
+            */
+
 #if DEBUG == 1
             std::cout<<"Create topic "+ velocityTopicName +"\n";
 #endif
@@ -182,9 +232,9 @@ namespace gazebo {
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
             //auto velocityDifPubTopicName = "/" + this->model->GetName() + "/diff_velocity";
             
-            this->positionPub = this->rosNode->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
-            this->velocityPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
-            //this->velocidyDiffPub = this->rosNode->advertise<CartConrolPlugin::Velocity>(velocityDifPubTopicName,1000);
+            this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
+            this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
+            //this->velocidyDiffPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityDifPubTopicName,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
@@ -205,11 +255,11 @@ namespace gazebo {
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
         /// of the Velodyne.
-        public: void OnRosMsg(const CartConrolPlugin::VelocityConstPtr &_msg)
+        public: void OnRosMsgVel(const CartConrolPlugin::VelocityConstPtr &_msg)
         {
             // if stop - shitdown topic
             if (_msg->stop)
-                this->rosNode->shutdown();
+                this->rosSub.shutdown();
 
 #if DEBUG == 1
             // Print velocityes
@@ -221,7 +271,7 @@ namespace gazebo {
 
 
             // set velocityes
-            setTargetVelocity(_msg->left/r,_msg->right/r,_msg->back/r);
+            setTargetVelocity(_msg->left,_msg->right,_msg->back);
 
 
 
@@ -231,11 +281,25 @@ namespace gazebo {
            // backJoint->SetVelocityTarget(0, _msg->back / r);
         }
 
+        public: void OnRosMsgPath(const CartConrolPlugin::PathMsgConstPtr &_msg)
+        {
+#if DEBUG == 0
+            for (int i=0; i<_msg->path.size(); ++i)
+               {
+                 auto &data = _msg->path[i];
+                 ROS_INFO("X: %f Y: %f" ,
+                          data.position.x,
+                          data.position.y );
+               }
+#endif
+
+        }
+
         /// \brief ROS helper function that processes messages
         private: void QueueThread()
         {
           static const double timeout = 0.01;
-          while (this->rosNode->ok())
+          while (this->rosNodeSub->ok())
           {
             this->rosQueue.callAvailable(ros::WallDuration(timeout));
           }
@@ -363,7 +427,15 @@ namespace gazebo {
               this->backJoint->GetScopedName(), this->pidWheels);
     }
 
+        /// subscribe tocurrent soStruct topic
+        private: void subscribe()
+        {
+            auto so = this->soStruct.getOption();
+            this->rosSub = this->rosNodeSub->subscribe(so);
+        }
     };
+
+
 
     // Register this plugin with the simulator
     GZ_REGISTER_MODEL_PLUGIN(OmniPlatformPlugin)

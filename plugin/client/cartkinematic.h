@@ -1,6 +1,8 @@
 #ifndef CARTKINEMATIC_H
 #define CARTKINEMATIC_H
 
+#include "commonheader.h"
+
 #include <CartConrolPlugin/Velocity.h>
 #include <QPointF>
 #include <vector>
@@ -19,7 +21,7 @@ namespace CartKinematic
     // Global robot angle
     const double fi = 0.0;
 
-    CartConrolPlugin::Velocity getVelocity(QPointF p);
+    CartConrolPlugin::Velocity getVelocity(QPointF p, double anglVel = 0.0);
 };
 
 #endif // CARTKINEMATIC_H

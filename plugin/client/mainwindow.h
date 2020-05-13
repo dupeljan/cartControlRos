@@ -1,9 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "commonheader.h"
+
 #include <QMainWindow>
 #include "rospublisher.h"
 #include "cartcontrollerwidget.h"
+#include "cartpathsetter.h"
 
 namespace Ui {
 class MainWindow;
@@ -23,6 +26,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     CartControllerWidget *controller;
+    CartPathSetter *setter;
 
 };
 

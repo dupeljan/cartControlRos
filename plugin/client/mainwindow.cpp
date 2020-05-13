@@ -3,6 +3,7 @@
 
 #include <QMouseEvent>
 #include <QGridLayout>
+#include <QPushButton>
 #include <iostream>
 #include <string>
 
@@ -11,11 +12,20 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    QPushButton *sendPathButton = new QPushButton();
     QWidget *mainWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout();
     controller = new CartControllerWidget();
+    setter = new CartPathSetter();
+
+    // Connecing
+    connect(sendPathButton,SIGNAL(clicked()),setter,SLOT(sendPath()));
     //controller->setLayout(ui->centralWidget->layout());
-    gridLayout->addWidget(controller,2,2);
+    // Add widgets to layout
+    gridLayout->addWidget(setter,1,1);
+    gridLayout->addWidget(controller,1,2);
+    gridLayout->addWidget(sendPathButton,2,1);
 
     mainWidget->setLayout(gridLayout);
     setCentralWidget(mainWidget);
