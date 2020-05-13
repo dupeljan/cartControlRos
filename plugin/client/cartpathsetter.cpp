@@ -1,6 +1,5 @@
 #include "cartpathsetter.h"
 #include "rospublisher.h"
-#include "CartConrolPlugin/PathMsg.h"
 #include "geometry_msgs/Pose.h"
 
 #include <algorithm>
@@ -64,10 +63,8 @@ void CartPathSetter::sendPath()
   v.back = 0.0;
   v.stop = true;
   this->pub->setVelocity(v);
-  // Send Path
-  // Prepare node
-  ros::NodeHandle n;
-  ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName, 1000);
+  //this->pub->pause();
+
   // Prepare path
   CartConrolPlugin::PathMsg msg;
   geometry_msgs::Pose pose;
@@ -78,8 +75,11 @@ void CartPathSetter::sendPath()
     msg.path.push_back(pose);
   }
 
-  // Send it
-  pathPub.publish(msg);
+  auto th =
+        std::thread(std::bind(&CartPathSetter::sendPathRoutine, this,msg));
+  th.detach();
+
+  //this->pub->resume();
   // Clear scene
   this->clearScene();
 }
@@ -88,4 +88,21 @@ void CartPathSetter::clearScene()
 {
     this->path.clear();
     this->scene->clear();
+}
+
+void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
+{
+    // Send Path
+    // Prepare node
+    ros::NodeHandle n;
+    ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName, 1000);
+
+
+    auto rate = ros::Rate(1);
+    while (!pathPub.getNumSubscribers())
+    {
+        rate.sleep();
+    }
+        // Send it
+        pathPub.publish(msg);
 }

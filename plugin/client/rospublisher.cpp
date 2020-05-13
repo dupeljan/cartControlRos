@@ -8,7 +8,7 @@ RosPublisher::RosPublisher()
     // Init ros
     int argc = 0;
     char **argv = NULL;
-    ros::init(argc,argv,"talker");
+    ros::init(argc,argv,"Cart_clietnt");
     // Create node handler
     node = std::unique_ptr<ros::NodeHandle>(new ros::NodeHandle());
     // Setup topic name
@@ -87,4 +87,17 @@ void RosPublisher::setVelocity(QPointF p)
     setVelocity(v);
     */
 
+}
+
+void RosPublisher::pause()
+{
+    exitSignal->set_value();
+    velocityPubThread.join();
+}
+
+void RosPublisher::resume()
+{
+    exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
+    futureObj = exitSignal->get_future();
+    velocityPubThread = std::thread(&RosPublisher::sendRoutine,this,std::move(futureObj));
 }

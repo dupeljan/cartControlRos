@@ -1,6 +1,7 @@
 #ifndef CARTPATHGETTER_H
 #define CARTPATHGETTER_H
 
+
 #include "commonheader.h"
 #include "cartpathabstract.h"
 
@@ -17,6 +18,7 @@ public slots:
     void drawAnaliticPath(std::vector<QPointF> v);
 private:
     QPointF translate(QPointF p);
+
 };
 
 #endif // CARTPATHGETTER_H

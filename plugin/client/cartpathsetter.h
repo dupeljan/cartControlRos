@@ -1,9 +1,13 @@
 #ifndef CARTPATHSETTER_H
 #define CARTPATHSETTER_H
 
+#include <thread>
+#include <functional>
+
 #include "commonheader.h"
 #include "cartpathabstract.h"
 #include "rospublisher.h"
+#include "CartConrolPlugin/PathMsg.h"
 
 class CartPathSetter: public CartPathAbstract
 {
@@ -22,6 +26,7 @@ private:
     std::string topicName;
     std::shared_ptr<RosPublisher> pub;
     void clearScene();
+    void sendPathRoutine(CartConrolPlugin::PathMsg msg);
 };
 
 #endif // CARTPATHSETTER_H
