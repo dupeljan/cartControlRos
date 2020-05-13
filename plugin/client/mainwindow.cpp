@@ -13,11 +13,12 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    pub = std::shared_ptr<RosPublisher>(new RosPublisher());
     QPushButton *sendPathButton = new QPushButton();
     QWidget *mainWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout();
-    controller = new CartControllerWidget();
-    setter = new CartPathSetter();
+    controller = new CartControllerWidget(pub);
+    setter = new CartPathSetter(pub);
 
     // Connecing
     connect(sendPathButton,SIGNAL(clicked()),setter,SLOT(sendPath()));

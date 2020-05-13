@@ -12,6 +12,7 @@
 #include <gazebo/common/common.hh>
 #include <iostream>
 #include <vector>
+#include <map>
 #include <string>
 #include <ctime>
 
@@ -69,31 +70,9 @@ namespace gazebo {
         ///  A thread the keeps running the rosQueue
         private: std::thread rosQueueThread;
 
-        /// Struct for subsciber manipulating
-        private: struct SubscibeOptions
-        {
-        public:
+        /// map of subsc. options for subsciber manipulating
+        private: std::map<std::string,ros::SubscribeOptions> soMap;
 
-            void pushBack(ros::SubscribeOptions op)
-            {
-                so.push_back(op);
-                i = (i == -1)? 0 : i;
-            }
-            ros::SubscribeOptions getOption()
-            {
-                return so[i];
-            }
-            /// move ptr to next subsribe option;
-            void next()
-            {
-                if (i != -1)
-                    i = (i+1) % so.size();
-            }
-        private:
-            std::vector<ros::SubscribeOptions> so;
-            int i = -1;
-
-        } soStruct;
 
         // end ros members
 
@@ -193,21 +172,20 @@ namespace gazebo {
             auto velocityTopicName = "/" + this->model->GetName() + "/velocity";
             auto pathTopicName = "/" + this->model->GetName() + "/path";
             // Create a named topic, and subscribe to it.
-            this->soStruct.pushBack(
-                        ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
+            this->soMap["Velocity"]
+                    =  ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
                             velocityTopicName,
                             1,
                             boost::bind(&OmniPlatformPlugin::OnRosMsgVel, this, _1),
-                            ros::VoidPtr(), &this->rosQueue));
-            this->soStruct.pushBack(
-                        ros::SubscribeOptions::create<CartConrolPlugin::PathMsg>(
+                            ros::VoidPtr(), &this->rosQueue);
+            this->soMap["PathMsg"]
+                     =   ros::SubscribeOptions::create<CartConrolPlugin::PathMsg>(
                             pathTopicName,
                             1,
                             boost::bind(&OmniPlatformPlugin::OnRosMsgPath, this, _1),
-                            ros::VoidPtr(), &this->rosQueue)
-                        );
-            this->soStruct.next();
-            this->subscribe();
+                            ros::VoidPtr(), &this->rosQueue);
+
+            this->subscribe("Velocity");
 
             /*
             auto so = ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
@@ -259,7 +237,12 @@ namespace gazebo {
         {
             // if stop - shitdown topic
             if (_msg->stop)
+            {
                 this->rosSub.shutdown();
+                this->subscribe("PathMsg");
+            }
+
+
 
 #if DEBUG == 1
             // Print velocityes
@@ -428,9 +411,9 @@ namespace gazebo {
     }
 
         /// subscribe tocurrent soStruct topic
-        private: void subscribe()
+        private: void subscribe(std::string key)
         {
-            auto so = this->soStruct.getOption();
+            auto so = this->soMap[key];
             this->rosSub = this->rosNodeSub->subscribe(so);
         }
     };

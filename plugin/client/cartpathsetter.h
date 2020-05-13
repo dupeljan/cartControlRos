@@ -3,13 +3,13 @@
 
 #include "commonheader.h"
 #include "cartpathabstract.h"
-
+#include "rospublisher.h"
 
 class CartPathSetter: public CartPathAbstract
 {
     Q_OBJECT
 public:
-    explicit CartPathSetter(QGraphicsView *parent = nullptr);
+    explicit CartPathSetter(std::shared_ptr<RosPublisher> rosPubPtr, QGraphicsView *parent = nullptr);
 signals:
 
 public slots:
@@ -19,8 +19,8 @@ public slots:
     void sendPath();
 
 private:
-
-
+    std::string topicName;
+    std::shared_ptr<RosPublisher> pub;
     void clearScene();
 };
 

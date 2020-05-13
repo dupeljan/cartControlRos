@@ -2,7 +2,8 @@
 #include <algorithm>
 #include <binders.h>
 
-CartPathGetter::CartPathGetter(QGraphicsView *parent) : CartPathAbstract(parent)
+CartPathGetter::CartPathGetter(QGraphicsView *parent)
+    : CartPathAbstract(parent)
 {
 
 }

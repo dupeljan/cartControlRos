@@ -1,12 +1,17 @@
 #include "cartpathsetter.h"
+#include "rospublisher.h"
+#include "CartConrolPlugin/PathMsg.h"
+#include "geometry_msgs/Pose.h"
+
 #include <algorithm>
 #include <QDebug>
 #include <iostream>
 
-CartPathSetter::CartPathSetter(QGraphicsView *parent)
+CartPathSetter::CartPathSetter(std::shared_ptr<RosPublisher> rosPubPtr, QGraphicsView *parent)
  : CartPathAbstract(parent)
 {
-
+  this->pub = std::shared_ptr<RosPublisher>(rosPubPtr);
+  this->topicName = "/robot_mobile_wheel_3_omni_open_base/path";
 }
 
 void CartPathSetter::mousePressEvent(QMouseEvent *e)
@@ -51,7 +56,31 @@ void CartPathSetter::sendPath()
   });
   for(auto point : path)
       qDebug((std::to_string( point.x() ) + ' ' + std::to_string( point.y() ) + '\n').c_str());
+  // send it to robot
+  // stop joystic control
+  CartConrolPlugin::Velocity v;
+  v.left = 0.0;
+  v.right = 0.0;
+  v.back = 0.0;
+  v.stop = true;
+  this->pub->setVelocity(v);
+  // Send Path
+  // Prepare node
+  ros::NodeHandle n;
+  ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName, 1000);
+  // Prepare path
+  CartConrolPlugin::PathMsg msg;
+  geometry_msgs::Pose pose;
+  for( auto point : path)
+  {
+    pose.position.x = point.x();
+    pose.position.y = point.y();
+    msg.path.push_back(pose);
+  }
 
+  // Send it
+  pathPub.publish(msg);
+  // Clear scene
   this->clearScene();
 }
 

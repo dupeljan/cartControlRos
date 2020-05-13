@@ -14,7 +14,7 @@ class CartControllerWidget : public QGraphicsView
 {
     Q_OBJECT
 public:
-    explicit CartControllerWidget(QGraphicsView *parent = nullptr);
+    explicit CartControllerWidget(std::shared_ptr<RosPublisher> rosPubPtr, QGraphicsView *parent = nullptr);
 
 signals:
 
@@ -25,7 +25,7 @@ public slots:
 private:
     QPointF posToVector(QPointF p);
     QGraphicsScene * scene;
-    std::unique_ptr<RosPublisher> pub;
+    std::shared_ptr<RosPublisher> pub;
     bool mousePressed;
 };
 

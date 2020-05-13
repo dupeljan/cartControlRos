@@ -5,11 +5,11 @@
 #include <QDebug>
 
 
-CartControllerWidget::CartControllerWidget(QGraphicsView *parent)
+CartControllerWidget::CartControllerWidget(std::shared_ptr<RosPublisher> rosPubPtr, QGraphicsView *parent)
         : QGraphicsView(parent)
 {
     // Setup publisher
-    pub = std::unique_ptr<RosPublisher>(new RosPublisher());
+    pub = std::shared_ptr<RosPublisher>(rosPubPtr);
     mousePressed = false;
     scene = new QGraphicsScene();
     this->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);

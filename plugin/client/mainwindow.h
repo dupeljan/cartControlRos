@@ -27,6 +27,7 @@ private:
     Ui::MainWindow *ui;
     CartControllerWidget *controller;
     CartPathSetter *setter;
+    std::shared_ptr<RosPublisher> pub;
 
 };
 
