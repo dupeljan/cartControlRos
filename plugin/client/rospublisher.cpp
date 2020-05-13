@@ -1,5 +1,5 @@
 #include "rospublisher.h"
-#include "cartkinematic.h"
+#include "kinematic/cartkinematic.h"
 #include <QDebug>
 #include <functional>
 
@@ -16,7 +16,7 @@ RosPublisher::RosPublisher()
     // Setup publisher
     VelocityPub = node->advertise<CartConrolPlugin::Velocity>(topicName,1000);
     // Setup loop rate
-    loopRate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
+    loopRate = std::unique_ptr<ros::Rate>(new ros::Rate(1000));
     // Setup velocity
     velocity.back = 0.0f;
     velocity.left = 0.0f;
@@ -79,7 +79,7 @@ void RosPublisher::setVelocity(QPointF p)
     // Transform to velocity and send
    // p.setX(0);
     //p.setY(1);
-    setVelocity(CartKinematic::getVelocity(p));
+    setVelocity(CartKinematic::getVelocity(CartKinematic::PointF(p.x(),p.y())));
     /*
     v.left = -1.;
     v.back = 0.;

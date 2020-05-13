@@ -11,6 +11,7 @@ CartPathSetter::CartPathSetter(std::shared_ptr<RosPublisher> rosPubPtr, QGraphic
 {
   this->pub = std::shared_ptr<RosPublisher>(rosPubPtr);
   this->topicName = "/robot_mobile_wheel_3_omni_open_base/path";
+  this->statusTopicName = "/robot_mobile_wheel_3_omni_open_base/status_path";
 }
 
 void CartPathSetter::mousePressEvent(QMouseEvent *e)
@@ -53,8 +54,10 @@ void CartPathSetter::sendPath()
     b.setY((simulationFieldSize.height() * p.y())/height() - simulationStartPoint.y());
     return b;
   });
+#if DEBUG == 1
   for(auto point : path)
       qDebug((std::to_string( point.x() ) + ' ' + std::to_string( point.y() ) + '\n').c_str());
+#endif
   // send it to robot
   // stop joystic control
   CartConrolPlugin::Velocity v;
@@ -63,7 +66,6 @@ void CartPathSetter::sendPath()
   v.back = 0.0;
   v.stop = true;
   this->pub->setVelocity(v);
-  //this->pub->pause();
 
   // Prepare path
   CartConrolPlugin::PathMsg msg;
@@ -75,11 +77,13 @@ void CartPathSetter::sendPath()
     msg.path.push_back(pose);
   }
 
+  this->pub->pause();
+
   auto th =
         std::thread(std::bind(&CartPathSetter::sendPathRoutine, this,msg));
   th.detach();
 
-  //this->pub->resume();
+  this->pub->resume();
   // Clear scene
   this->clearScene();
 }
@@ -95,14 +99,33 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
     // Send Path
     // Prepare node
     ros::NodeHandle n;
-    ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName, 1000);
+    ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName,1);
 
-
-    auto rate = ros::Rate(1);
-    while (!pathPub.getNumSubscribers())
+    // Create promise and futute
+    auto exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
+    auto futureObj = exitSignal->get_future();
+    // Subscribe to status
+    ros::Subscriber statusPathSub = n.subscribe<std_msgs::Bool>
+            ("Path_status_reader",1000,std::bind(&statusSubCallback,this,exitSignal.get()));
+    auto rate = ros::Rate(10);
+    /*qDebug(("Before" + std::to_string(pathPub.getNumSubscribers())).c_str());
+    do
     {
         rate.sleep();
-    }
-        // Send it
+    }while(!pathPub.getNumSubscribers())
+     qDebug(("After" + std::to_string(pathPub.getNumSubscribers())).c_str());
+     */   // Send it
+    do
+    {
+        rate.sleep();
         pathPub.publish(msg);
+    }while(futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
+
+     pathPub.shutdown();
+}
+
+void CartPathSetter::statusSubCallback(std::promise<void> p, const std_msgs::Bool_::ConstPtr &msg)
+{
+    if(msg.data)
+        p.set_value();
 }

@@ -3,11 +3,13 @@
 
 #include <thread>
 #include <functional>
+#include <future>
 
 #include "commonheader.h"
 #include "cartpathabstract.h"
 #include "rospublisher.h"
 #include "CartConrolPlugin/PathMsg.h"
+#include "std_msgs/Bool.h"
 
 class CartPathSetter: public CartPathAbstract
 {
@@ -24,9 +26,14 @@ public slots:
 
 private:
     std::string topicName;
+    std::string statusTopicName;
     std::shared_ptr<RosPublisher> pub;
     void clearScene();
     void sendPathRoutine(CartConrolPlugin::PathMsg msg);
+
+    /// Callback function for getting status
+    void statusSubCallback(std::promise<void> p, const std_msgs::Bool::ConstPtr& msg);
+
 };
 
 #endif // CARTPATHSETTER_H

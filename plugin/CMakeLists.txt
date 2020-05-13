@@ -54,7 +54,10 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 #build libruary
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")
-add_library(main SHARED main.cc)
+add_library(main SHARED main.cc
+        kinematic/cartkinematic.cpp
+        kinematic/cartkinematic.h
+    )
 add_dependencies(main ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
 target_link_libraries(main  ${GAZEBO_LIBRARIES} 
 							${Boost_LIBRARIES} 
@@ -76,8 +79,6 @@ add_executable(client
                 client/cartcontrollerwidget.h
                 client/rospublisher.cpp
                 client/rospublisher.h
-                client/cartkinematic.cpp
-                client/cartkinematic.h
                 client/cartpathsetter.cpp
                 client/cartpathsetter.h
                 client/commonheader.h
@@ -85,6 +86,8 @@ add_executable(client
                 client/cartpathabstract.h
                 client/cartpathgetter.cpp
                 client/cartpathgetter.h
+                kinematic/cartkinematic.cpp
+                kinematic/cartkinematic.h
 	)
 target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)

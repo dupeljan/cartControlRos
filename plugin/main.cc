@@ -13,9 +13,11 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <mutex>
 #include <string>
 #include <ctime>
 
+#include "kinematic/cartkinematic.h"
 
 #include <CartConrolPlugin/Velocity.h>
 #include <CartConrolPlugin/Position.h>
@@ -29,6 +31,7 @@
 #include "ros/callback_queue.h"
 #include "ros/subscribe_options.h"
 #include "std_msgs/Float32.h"
+#include "std_msgs/Bool.h"
 
 #define L 0.04 // distance between body center and wheel center
 #define r 0.01905 // wheel radius
@@ -90,11 +93,22 @@ namespace gazebo {
 
         private: physics::WorldPtr world;
 
+
+        /// shared status variable
+        /// true if path is receved
+        private: std_msgs::Bool pathReceved;
+
+        /// Mutex for pathReceved
+        private: std::mutex pathRecevedMutex;
+
         // Cart position publisher
         private: ros::Publisher positionPub;
 
         // Cart actual velocity publisher
         private: ros::Publisher velocityPub;
+
+        // Publisher for pathReceved
+        private: ros::Publisher statusPub;
 
         // Difference between actial speed and required
         //private: ros::Publisher velocidyDiffPub;
@@ -145,6 +159,7 @@ namespace gazebo {
 
             this->time = std::clock();
 
+            this->pathReceved.data = false;
 
 
             
@@ -208,11 +223,11 @@ namespace gazebo {
             // Create publisher
             auto posPubTopicName = "/"+this->model->GetName() +"/pos";
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
-            //auto velocityDifPubTopicName = "/" + this->model->GetName() + "/diff_velocity";
+            auto statusPubTopicName = "/" + this->model->GetName() + "/status_path";
             
             this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
             this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
-            //this->velocidyDiffPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityDifPubTopicName,1000);
+            this->statusPub = this->rosNodePub->advertise<std_msgs::Bool>(statusPubTopicName,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
@@ -235,7 +250,7 @@ namespace gazebo {
         /// of the Velodyne.
         public: void OnRosMsgVel(const CartConrolPlugin::VelocityConstPtr &_msg)
         {
-            // if stop - shitdown topic
+            // if stop - shutdown topic and start path stearing
             if (_msg->stop)
             {
                 this->rosSub.shutdown();
@@ -275,7 +290,39 @@ namespace gazebo {
                           data.position.y );
                }
 #endif
+            /// Send message to client
+            /// that we already receved
+            /// path
 
+            this->pathRecevedMutex.lock();
+            this->pathReceved.data = true;
+            this->pathRecevedMutex.unlock();
+
+            int freq = 1000;
+            auto rate = ros::Rate(freq);
+            // Steer cart the way
+            for(auto pos : _msg->path){
+                auto v = CartKinematic::getVelocity(CartKinematic::PointF(pos.position.x,pos.position.y));
+                for(int i = 0; i < 3 * freq; i++)
+                {
+                    this->setTargetVelocity(v.left,v.right,v.back);
+                    rate.sleep();
+                }
+
+
+            }
+
+            // Stop cart
+            while (this->pidCartRot.GetCmd() > 0.1){
+                this->setTargetVelocity(0.0,0.0,0.0);
+                rate.sleep();
+            }
+
+            std::cout << "Finish path steering\n";
+
+            this->pathRecevedMutex.lock();
+            this->pathReceved.data = false;
+            this->pathRecevedMutex.unlock();
         }
 
         /// \brief ROS helper function that processes messages
@@ -296,9 +343,9 @@ namespace gazebo {
             auto err =   this->model->RelativePose().Rot().Yaw();
             auto rc = pidCartRot.Update(err,common::Time( 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC) );
             this->time = std::clock();
-
-            std::cout <<std::to_string(err) <<' ' << std::to_string(rc) << '\n';
-
+#if DEBUG == 1
+            std::cout << "Error:" << std::to_string(err) <<" Corrective speed:" << std::to_string(rc) << '\n';
+#endif
             this->model->GetJointController()->
                     SetVelocityTarget( this->leftJoint->GetScopedName(), rc + left);
             this->model->GetJointController()->
@@ -349,12 +396,17 @@ namespace gazebo {
                 * given as a template parameter to the advertise<>() call, as was done
                 * in the constructor above.
                 */
+               // Saferty for multythreading
+               this->pathRecevedMutex.lock();
+               std_msgs::Bool status = this->pathReceved;
+               this->pathRecevedMutex.unlock();
+
 
                this->positionPub.publish(p);
                this->velocityPub.publish(v);
+               this->statusPub.publish(status);
 
                ros::spinOnce();
-
                this->loop_rate->sleep();
                ++count;
              }
