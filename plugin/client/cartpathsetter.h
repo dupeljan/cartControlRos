@@ -30,12 +30,12 @@ private:
     {
         /// Callback function for getting status
         void statusSubCallback(std::shared_ptr<std::promise<void> > p, const std_msgs::Bool::ConstPtr &msg);
-        void runThread(std::shared_ptr<std::promise<void>> p);
+        void runThread(std::shared_ptr<std::promise<void>> p,std::shared_ptr<std::shared_future<void>> f);
         std::shared_ptr<ros::NodeHandle> n;
         std::string topicName;
     public:
         StatusChecker(std::shared_ptr<ros::NodeHandle> n, std::string topicName);
-        void run(std::shared_ptr<std::promise<void>> p);
+        void run(std::shared_ptr<std::promise<void>> p,std::shared_ptr<std::shared_future<void>> f);
     };
 
     std::string topicName;

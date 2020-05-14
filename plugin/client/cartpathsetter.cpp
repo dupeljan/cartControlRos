@@ -104,31 +104,37 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
     // Subscribe to status
     auto promise = std::shared_ptr<std::promise<void>>(new std::promise<void>);
     // Get future
-    auto futureObj = promise->get_future();
+    auto futureObj = std::shared_ptr<std::shared_future<void>>(new std::shared_future<void>(promise->get_future()));
     StatusChecker stCheck(n,statusTopicName);
     // Run subscribe spin
-    stCheck.run(promise);
+    stCheck.run(promise,futureObj);
     auto rate = ros::Rate(10);
 
     do
     {
         rate.sleep();
         pathPub.publish(msg);
-    }while(futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
+    }while(futureObj->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
 
      pathPub.shutdown();
      n->shutdown();
 }
 
 
-void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void> > p)
+void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void> > p,std::shared_ptr<std::shared_future<void>> f)
 {
-    ros::Subscriber statusPathSub = n->subscribe<std_msgs::Bool>
+    auto statusPathSub = n->subscribe<std_msgs::Bool>
             (topicName, 1000,
              boost::bind(&StatusChecker::statusSubCallback,this,
                        p, _1));
+    auto loopRate = ros::Rate(1000);
+    while(f->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout){
 
-    ros::spin();
+        ros::spinOnce();
+        loopRate.sleep();
+    }
+
+
 }
 
 CartPathSetter::StatusChecker::StatusChecker(std::shared_ptr<ros::NodeHandle> n, std::string topicName)
@@ -138,10 +144,10 @@ CartPathSetter::StatusChecker::StatusChecker(std::shared_ptr<ros::NodeHandle> n,
 }
 
 
-void CartPathSetter::StatusChecker::run(std::shared_ptr<std::promise<void> > p)
+void CartPathSetter::StatusChecker::run(std::shared_ptr<std::promise<void> > p, std::shared_ptr<std::shared_future<void>> f)
 {
    auto th  =
-            std::thread(std::bind(&StatusChecker::runThread,this, p ));
+            std::thread(std::bind(&StatusChecker::runThread,this, p, f ));
    th.detach();
 }
 
