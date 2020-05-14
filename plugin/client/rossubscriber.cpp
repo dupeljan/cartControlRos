@@ -10,9 +10,11 @@ RosSubscriber::RosSubscriber()
     th.detach();
 }
 
+
 RosSubscriber::~RosSubscriber()
 {
     this->promise.set_value();
+    QObject::deleteLater();
 }
 
 
@@ -28,7 +30,8 @@ void RosSubscriber::runRoutine()
     auto loopRate = ros::Rate(1000);
 
     // While promise doesn't set it's value
-    while(this->future.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
+   while(this->future.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
+   //while(ros::ok())
     {
         ros::spinOnce();
         loopRate.sleep();
