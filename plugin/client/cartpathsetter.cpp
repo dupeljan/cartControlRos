@@ -98,23 +98,18 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
 {
     // Send Path
     // Prepare node
-    ros::NodeHandle n;
-    ros::Publisher pathPub = n.advertise<CartConrolPlugin::PathMsg>(this->topicName,1);
+    auto n = std::shared_ptr<ros::NodeHandle>(new ros::NodeHandle);
+    ros::Publisher pathPub = n->advertise<CartConrolPlugin::PathMsg>(this->topicName,1);
 
-    // Create promise and futute
-    auto exitSignal = std::unique_ptr<std::promise<void>>(new std::promise<void>());
-    auto futureObj = exitSignal->get_future();
     // Subscribe to status
-    ros::Subscriber statusPathSub = n.subscribe<std_msgs::Bool>
-            ("Path_status_reader",1000,std::bind(&statusSubCallback,this,exitSignal.get()));
+    auto promise = std::shared_ptr<std::promise<void>>(new std::promise<void>);
+    // Get future
+    auto futureObj = promise->get_future();
+    StatusChecker stCheck(n,statusTopicName);
+    // Run subscribe spin
+    stCheck.run(promise);
     auto rate = ros::Rate(10);
-    /*qDebug(("Before" + std::to_string(pathPub.getNumSubscribers())).c_str());
-    do
-    {
-        rate.sleep();
-    }while(!pathPub.getNumSubscribers())
-     qDebug(("After" + std::to_string(pathPub.getNumSubscribers())).c_str());
-     */   // Send it
+
     do
     {
         rate.sleep();
@@ -122,10 +117,36 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
     }while(futureObj.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
 
      pathPub.shutdown();
+     n->shutdown();
 }
 
-void CartPathSetter::statusSubCallback(std::promise<void> p, const std_msgs::Bool_::ConstPtr &msg)
+
+void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void> > p)
 {
-    if(msg.data)
-        p.set_value();
+    ros::Subscriber statusPathSub = n->subscribe<std_msgs::Bool>
+            (topicName, 1000,
+             boost::bind(&StatusChecker::statusSubCallback,this,
+                       p, _1));
+
+    ros::spin();
+}
+
+CartPathSetter::StatusChecker::StatusChecker(std::shared_ptr<ros::NodeHandle> n, std::string topicName)
+{
+    this->n = std::shared_ptr<ros::NodeHandle>(n);
+    this->topicName = topicName;
+}
+
+
+void CartPathSetter::StatusChecker::run(std::shared_ptr<std::promise<void> > p)
+{
+   auto th  =
+            std::thread(std::bind(&StatusChecker::runThread,this, p ));
+   th.detach();
+}
+
+void CartPathSetter::StatusChecker::statusSubCallback(std::shared_ptr<std::promise<void>> p, const std_msgs::Bool::ConstPtr &msg)
+{
+    if(msg->data)
+        p->set_value();
 }

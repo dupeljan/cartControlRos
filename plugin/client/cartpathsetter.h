@@ -4,6 +4,7 @@
 #include <thread>
 #include <functional>
 #include <future>
+#include <boost/bind.hpp>
 
 #include "commonheader.h"
 #include "cartpathabstract.h"
@@ -25,14 +26,25 @@ public slots:
     void sendPath();
 
 private:
+    class StatusChecker
+    {
+        /// Callback function for getting status
+        void statusSubCallback(std::shared_ptr<std::promise<void> > p, const std_msgs::Bool::ConstPtr &msg);
+        void runThread(std::shared_ptr<std::promise<void>> p);
+        std::shared_ptr<ros::NodeHandle> n;
+        std::string topicName;
+    public:
+        StatusChecker(std::shared_ptr<ros::NodeHandle> n, std::string topicName);
+        void run(std::shared_ptr<std::promise<void>> p);
+    };
+
     std::string topicName;
     std::string statusTopicName;
     std::shared_ptr<RosPublisher> pub;
     void clearScene();
     void sendPathRoutine(CartConrolPlugin::PathMsg msg);
 
-    /// Callback function for getting status
-    void statusSubCallback(std::promise<void> p, const std_msgs::Bool::ConstPtr& msg);
+
 
 };
 
