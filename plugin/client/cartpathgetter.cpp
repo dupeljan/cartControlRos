@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <binders.h>
 
+#include <QDebug>
+
 CartPathGetter::CartPathGetter(QGraphicsView *parent)
     : CartPathAbstract(parent)
 {
@@ -10,19 +12,24 @@ CartPathGetter::CartPathGetter(QGraphicsView *parent)
 
 void CartPathGetter::drawSimulationPos(QPointF point)
 {
-
+    auto trPoint = translate(point);
+    this->scene->addEllipse(QRectF(trPoint.x(),trPoint.y(),1,1));
 }
 
 void CartPathGetter::drawAnaliticPath(std::vector<QPointF> v)
 {
+    // Path thransform
+    /*
     std::transform(v.begin(),v.end(),this->path.begin(),
                    [this](QPointF p)
     {
         return this->translate(p);
     });
-    for(auto it = path.begin(); (it + 1) != path.end(); it++)
+    */
+    this -> path = v;
+    this->scene->clear();
+    for(auto it = path.begin(); (it + 1) != path.end(); it++)    
         this->scene->addLine(QLineF(it[0],it[1]));
-
 
 }
 

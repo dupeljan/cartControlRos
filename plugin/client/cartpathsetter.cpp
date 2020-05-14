@@ -45,7 +45,8 @@ void CartPathSetter::mouseReleaseEvent(QMouseEvent *e)
 
 void CartPathSetter::sendPath()
 {
-
+  // Send path to getter
+  emit pathChosen(path);
   // Translate plot coords to simulation coords
   std::transform(path.begin(),path.end(),path.begin(),
                  [this](QPointF p){
@@ -94,33 +95,36 @@ void CartPathSetter::clearScene()
     this->scene->clear();
 }
 
+// Send path to cart
 void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
 {
-    // Send Path
     // Prepare node
     auto n = std::shared_ptr<ros::NodeHandle>(new ros::NodeHandle);
     ros::Publisher pathPub = n->advertise<CartConrolPlugin::PathMsg>(this->topicName,1);
 
     // Subscribe to status
+    // Create shared future and promise
     auto promise = std::shared_ptr<std::promise<void>>(new std::promise<void>);
-    // Get future
     auto futureObj = std::shared_ptr<std::shared_future<void>>(new std::shared_future<void>(promise->get_future()));
+    // Init status checker
     StatusChecker stCheck(n,statusTopicName);
     // Run subscribe spin
     stCheck.run(promise,futureObj);
     auto rate = ros::Rate(10);
 
+    // Publish while promise doesn't set it's value
     do
     {
         rate.sleep();
         pathPub.publish(msg);
     }while(futureObj->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
 
+    // Release
      pathPub.shutdown();
      n->shutdown();
 }
 
-
+// Status subsriber loop
 void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void> > p,std::shared_ptr<std::shared_future<void>> f)
 {
     auto statusPathSub = n->subscribe<std_msgs::Bool>
@@ -128,8 +132,10 @@ void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void>
              boost::bind(&StatusChecker::statusSubCallback,this,
                        p, _1));
     auto loopRate = ros::Rate(1000);
-    while(f->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout){
 
+    // While promise doesn't set it's value
+    while(f->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
+    {
         ros::spinOnce();
         loopRate.sleep();
     }
@@ -143,7 +149,7 @@ CartPathSetter::StatusChecker::StatusChecker(std::shared_ptr<ros::NodeHandle> n,
     this->topicName = topicName;
 }
 
-
+// Run runthread in new thread
 void CartPathSetter::StatusChecker::run(std::shared_ptr<std::promise<void> > p, std::shared_ptr<std::shared_future<void>> f)
 {
    auto th  =

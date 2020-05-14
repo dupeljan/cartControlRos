@@ -11,9 +11,9 @@ CartPathAbstract::CartPathAbstract(QGraphicsView *parent) : QGraphicsView(parent
     this->setSceneRect(0, 0, width(), width());
     this->setScene(scene);
 
-    this->simulationFieldSize.setHeight(10.0);
-    this->simulationFieldSize.setWidth(10.0);
+    this->simulationFieldSize.setHeight(2.0);
+    this->simulationFieldSize.setWidth(2.0);
 
-    this->simulationStartPoint.setX(5.0);
-    this->simulationStartPoint.setY(5.0);
+    this->simulationStartPoint.setX(1.0);
+    this->simulationStartPoint.setY(1.0);
 }

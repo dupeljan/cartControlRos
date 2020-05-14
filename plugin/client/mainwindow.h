@@ -5,8 +5,10 @@
 
 #include <QMainWindow>
 #include "rospublisher.h"
+#include "rossubscriber.h"
 #include "cartcontrollerwidget.h"
 #include "cartpathsetter.h"
+#include "cartpathgetter.h"
 
 namespace Ui {
 class MainWindow;
@@ -27,7 +29,9 @@ private:
     Ui::MainWindow *ui;
     CartControllerWidget *controller;
     CartPathSetter *setter;
+    CartPathGetter *getter;
     std::shared_ptr<RosPublisher> pub;
+    std::unique_ptr<RosSubscriber> sub;
 
 };
 

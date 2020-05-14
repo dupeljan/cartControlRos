@@ -86,6 +86,8 @@ add_executable(client
                 client/cartpathabstract.h
                 client/cartpathgetter.cpp
                 client/cartpathgetter.h
+                client/rossubscriber.cpp
+                client/rossubscriber.h
                 kinematic/cartkinematic.cpp
                 kinematic/cartkinematic.h
 	)

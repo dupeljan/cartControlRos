@@ -18,6 +18,8 @@ class CartPathSetter: public CartPathAbstract
 public:
     explicit CartPathSetter(std::shared_ptr<RosPublisher> rosPubPtr, QGraphicsView *parent = nullptr);
 signals:
+    // Send when user shouse path
+    void pathChosen(std::vector<QPointF> p);
 
 public slots:
     void mousePressEvent(QMouseEvent* e);
@@ -26,6 +28,10 @@ public slots:
     void sendPath();
 
 private:
+    // Class for
+    // subscribing to status topic.
+    // Set value of the promise after run,
+    // when status become true
     class StatusChecker
     {
         /// Callback function for getting status
