@@ -32,6 +32,7 @@
 #include "ros/subscribe_options.h"
 #include "std_msgs/Float32.h"
 #include "std_msgs/Bool.h"
+#include "geometry_msgs/Pose.h"
 
 #define L 0.04 // distance between body center and wheel center
 #define r 0.01905 // wheel radius
@@ -298,22 +299,63 @@ namespace gazebo {
             this->pathReceved.data = true;
             this->pathRecevedMutex.unlock();
 
+
+            // Transform geometry position to
+            // CartKinematic::PointF
+            std::vector<CartKinematic::PointF> points;
+            // Get current pos
+            {
+                CartKinematic::PointF p;
+                p.x = this->model->RelativePose().Pos().X();
+                p.y = this->model->RelativePose().Pos().Y();
+                points.push_back(p);
+            }
+            // Transform path to points
+            std::transform(_msg->path.begin(),_msg->path.end(),
+                           std::back_insert_iterator<std::vector<CartKinematic::PointF>>(points),
+                           []( geometry_msgs::Pose pose){
+                                CartKinematic::PointF point;
+                                point.x = pose.position.x;
+                                point.y = pose.position.y;
+                                return point;
+            });
+
             int freq = 1000;
+            // Velocity unit per second
+            double velocity = 0.1;
             auto rate = ros::Rate(freq);
+
             // Steer cart the way
-            for(auto pos : _msg->path){
-                auto v = CartKinematic::getVelocity(CartKinematic::PointF(pos.position.x,pos.position.y));
-                for(int i = 0; i < 3 * freq; i++)
+            for(auto it = points.begin(); (it + 1) != points.end(); it++)
+            {
+                // it[0] - start point
+                // it[1] - destination point
+                // Get distance between points
+                auto d = CartKinematic::distance(it[0],it[1]);
+                // Get Velocity vector
+                auto v = CartKinematic::getVelocity(it[1] - it[0]);
+                // Get time in sec / freq
+                auto t = d / velocity;
+                std::cout<< "d " <<std::to_string(d) << " t" << std::to_string(t) << std::endl;
+                // Move robot
+                for(int i = 0; i < t * freq; i++)
                 {
                     this->setTargetVelocity(v.left,v.right,v.back);
                     rate.sleep();
                 }
-
-
             }
 
+
+            auto eps = 0.1;
             // Stop cart
-            while (this->pidCartRot.GetCmd() > 0.1){
+            while (this->pidCartRot.GetCmd() > eps ||
+                   /*
+                   this->leftJoint->GetVelocity(0) > eps &&
+                   this->rightJoint->GetVelocity(0) > eps &&
+                   this->backJoint->GetVelocity(0) > eps
+                   */
+                   this->pidWheels.GetCmd() > std::pow(eps,2)
+       ){
                 this->setTargetVelocity(0.0,0.0,0.0);
                 rate.sleep();
             }
@@ -323,6 +365,10 @@ namespace gazebo {
             this->pathRecevedMutex.lock();
             this->pathReceved.data = false;
             this->pathRecevedMutex.unlock();
+
+            // Start velocity control
+            this->rosSub.shutdown();
+            this->subscribe("Velocity");
         }
 
         /// \brief ROS helper function that processes messages

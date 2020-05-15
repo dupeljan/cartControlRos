@@ -31,6 +31,7 @@ public slots:
 private:
     void runRoutine();
     void callBack(const CartConrolPlugin::Position::ConstPtr &msg);
+    std::thread runThread;
     std::string topicName;
     std::promise<void> promise;
     std::future<void> future;

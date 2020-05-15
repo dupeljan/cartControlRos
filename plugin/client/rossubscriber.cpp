@@ -5,15 +5,16 @@ RosSubscriber::RosSubscriber()
     this->topicName = "/robot_mobile_wheel_3_omni_open_base/pos";
 
     this->future = this->promise.get_future();
-    auto th =
+    this->runThread =
          std::thread(std::bind(&RosSubscriber::runRoutine,this));
-    th.detach();
+    //th.detach();
 }
 
 
 RosSubscriber::~RosSubscriber()
 {
     this->promise.set_value();
+    this->runThread.join();
     QObject::deleteLater();
 }
 
@@ -30,8 +31,7 @@ void RosSubscriber::runRoutine()
     auto loopRate = ros::Rate(1000);
 
     // While promise doesn't set it's value
-   while(this->future.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
-   //while(ros::ok())
+    while(this->future.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
     {
         ros::spinOnce();
         loopRate.sleep();

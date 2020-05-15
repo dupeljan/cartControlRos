@@ -119,6 +119,13 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
         pathPub.publish(msg);
     }while(futureObj->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
 
+    // send zero velocity
+    CartConrolPlugin::Velocity v;
+    v.back = 0.0;
+    v.left = 0.0;
+    v.right = 0.0;
+    v.stop = false;
+    this->pub->setVelocity(v);
     // Release
      pathPub.shutdown();
      n->shutdown();

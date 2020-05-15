@@ -47,6 +47,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    //setter->deleteLater();
+    //getter->deleteLater();
     delete ui;
 }
 
