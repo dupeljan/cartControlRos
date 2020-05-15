@@ -166,10 +166,7 @@ namespace gazebo {
             this->pathReceved.data = false;
 
 
-            auto test =
 
-                    CartKinematic::getVelocity(CartKinematic::PointF(0.0,1.0));
-            std::cout <<test.left<< ' ' << test.back << ' ' << test.right << '\n';
 
             // Listen to the update event. This event is broadcast every
             // simulation iteration.
@@ -341,15 +338,42 @@ namespace gazebo {
                 auto d = CartKinematic::distance(it[0],it[1]);
                 // Get Velocity vector
                 auto v = CartKinematic::getVelocity(it[1] - it[0]);
+                // Actual cart velosity
+                CartConrolPlugin::Velocity vAct;
                 // Get time in sec / freq
                 auto t = d / velocity;
-                std::cout<< "d " <<std::to_string(d) << " t" << std::to_string(t) << std::endl;
+                std::cout<< "d " <<std::to_string(d) << std::endl;
                 // Move robot
-                for(int i = 0; i < t * freq; i++)
+                // Distance treveled
+                double s = 0.0;
+                CartKinematic::PointF before, after,b, a;
+                before.x = this->model->RelativePose().Pos().X();
+                before.y = this->model->RelativePose().Pos().Y();
+                b = before;
+                while ( s < d )
                 {
                     this->setTargetVelocity(v.left,v.right,v.back);
+                    // Add treveled distance
+
+                    vAct.left = this->leftJoint->GetVelocity(0);
+                    vAct.right =  this->rightJoint->GetVelocity(0);
+                    vAct.back =  this->backJoint->GetVelocity(0);;
+                    auto pos = CartKinematic::getVelocityReverse(vAct);
+                    //// vvv convertation to unit/sec
+                    //s += 0.2 * CartKinematic::norm(pos) / freq;
+                    // cheat
+                    a.x = this->model->RelativePose().Pos().X();
+                    a.y = this->model->RelativePose().Pos().Y();
+                    s += CartKinematic::distance(b,a);
+                    b = a;
+                    // Sleep for next iteration
+
                     rate.sleep();
                 }
+                after.x = this->model->RelativePose().Pos().X();
+                after.y = this->model->RelativePose().Pos().Y();
+                std::cout << "actual d " << CartKinematic::distance(before,after) << '\n';
+                std::cout << "s " << s << '\n';
             }
 
 
