@@ -57,6 +57,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} ")
 add_library(main SHARED main.cc
         kinematic/cartkinematic.cpp
         kinematic/cartkinematic.h
+        kinematic/matrixproc.h
     )
 add_dependencies(main ${PROJECT_NAME}_generate_messages ${PROJECT_NAME}_gencfg)
 target_link_libraries(main  ${GAZEBO_LIBRARIES} 
@@ -90,6 +91,7 @@ add_executable(client
                 client/rossubscriber.h
                 kinematic/cartkinematic.cpp
                 kinematic/cartkinematic.h
+                kinematic/matrixproc.h
 	)
 target_link_libraries(client ${roscpp_LIBRARIES} Qt5::Widgets)
 add_dependencies(client ${PROJECT_NAME}_generate_messages)

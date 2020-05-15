@@ -111,6 +111,9 @@ namespace gazebo {
         // Publisher for pathReceved
         private: ros::Publisher statusPub;
 
+        // Publisher for reveseKinematic
+        private: ros::Publisher reverseKinematicPub;
+
         // Difference between actial speed and required
         //private: ros::Publisher velocidyDiffPub;
 
@@ -163,8 +166,10 @@ namespace gazebo {
             this->pathReceved.data = false;
 
 
-            
+            auto test =
 
+                    CartKinematic::getVelocity(CartKinematic::PointF(0.0,1.0));
+            std::cout <<test.left<< ' ' << test.back << ' ' << test.right << '\n';
 
             // Listen to the update event. This event is broadcast every
             // simulation iteration.
@@ -225,10 +230,12 @@ namespace gazebo {
             auto posPubTopicName = "/"+this->model->GetName() +"/pos";
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
             auto statusPubTopicName = "/" + this->model->GetName() + "/status_path";
-            
+            auto reverseKinematic = "/" + this->model->GetName() + "/reverse_kinematic";
+
             this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
             this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
             this->statusPub = this->rosNodePub->advertise<std_msgs::Bool>(statusPubTopicName,1000);
+            this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(reverseKinematic,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
@@ -403,6 +410,7 @@ namespace gazebo {
     private: void PublisherLoop(){
             int count = 0;
             CartConrolPlugin::Position p;
+            CartConrolPlugin::Position reverseKinematic;
             CartConrolPlugin::Velocity v;
             //CartConrolPlugin::Velocity vDiff;
             while (ros::ok())
@@ -425,10 +433,13 @@ namespace gazebo {
                                << std::endl ;
                */
               // Get velocity
-             v.left = this->leftJoint->GetVelocity(0) * r;
-             v.right = this->rightJoint->GetVelocity(0) * r  ;
-             v.back = this->backJoint->GetVelocity(0) * r ;
+             v.left = this->leftJoint->GetVelocity(0); //* r;
+             v.right = this->rightJoint->GetVelocity(0); //* r  ;
+             v.back = this->backJoint->GetVelocity(0); //* r ;
 
+
+             // get Reverse kinematic
+             reverseKinematic = CartKinematic::getVelocityReverse(v);
               // Get velocity diffenence
               //vDiff =
 
@@ -451,6 +462,7 @@ namespace gazebo {
                this->positionPub.publish(p);
                this->velocityPub.publish(v);
                this->statusPub.publish(status);
+               this->reverseKinematicPub.publish(reverseKinematic);
 
                ros::spinOnce();
                this->loop_rate->sleep();
