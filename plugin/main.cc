@@ -129,6 +129,9 @@ namespace gazebo {
         // Pid varieble for cart rotation
         private: common::PID pidCartRot;
 
+        // Pid variable for right path stearing
+        private common::PID pidStearing;
+
         // Time for rotation pid
         private: std::clock_t time;
 
@@ -160,6 +163,8 @@ namespace gazebo {
             this->applyPID();
 
             this->pidCartRot = common::PID(50.0,25.0,6.0);
+
+            this->pidStearing = common::PID(10.0);
 
             this->time = std::clock();
 
@@ -336,12 +341,16 @@ namespace gazebo {
                 // it[1] - destination point
                 // Get distance between points
                 auto d = CartKinematic::distance(it[0],it[1]);
-                // Get Velocity vector
-                auto v = CartKinematic::getVelocity(it[1] - it[0]);
+                // Get cart velocity vector
+                auto tau = it[1] - it[0];
+                CartKinematic::Position vCart;
+                vCart.x = tau.x;
+                vCart.y = tau.y;
+                vCart.angle = 0.0;
+                // Get wheel velocity vector
+                auto v = CartKinematic::getVelocity(tau);
                 // Actual cart velosity
                 CartConrolPlugin::Velocity vAct;
-                // Get time in sec / freq
-                auto t = d / velocity;
                 std::cout<< "d " <<std::to_string(d) << std::endl;
                 // Move robot
                 // Distance treveled
@@ -357,15 +366,18 @@ namespace gazebo {
 
                     vAct.left = this->leftJoint->GetVelocity(0);
                     vAct.right =  this->rightJoint->GetVelocity(0);
-                    vAct.back =  this->backJoint->GetVelocity(0);;
+                    vAct.back =  this->backJoint->GetVelocity(0);
                     auto pos = CartKinematic::getVelocityReverse(vAct);
+                    pos.angle = 0;
                     //// vvv convertation to unit/sec
-                    //s += 0.2 * CartKinematic::norm(pos) / freq;
+                    // Translate vAct on v direction and oposite v direction
+
+                    s += 0.2 * CartKinematic::norm(pos) / freq;
                     // cheat
-                    a.x = this->model->RelativePose().Pos().X();
-                    a.y = this->model->RelativePose().Pos().Y();
-                    s += CartKinematic::distance(b,a);
-                    b = a;
+                    //a.x = this->model->RelativePose().Pos().X();
+                    //a.y = this->model->RelativePose().Pos().Y();
+                    //s += CartKinematic::distance(b,a);
+                    //b = a;
                     // Sleep for next iteration
 
                     rate.sleep();
