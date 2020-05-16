@@ -27,7 +27,8 @@ include_directories(${std_msgs_INCLUDE_DIRS})
 
 # Enumerate our custom messages files
 add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES
-                                        msg/Velocity.msg
+                                        msg/VelocityCart.msg
+                                        msg/VelocityWheels.msg
                                         msg/Position.msg
                                         msg/PathMsg.msg)
 generate_messages(DEPENDENCIES geometry_msgs)

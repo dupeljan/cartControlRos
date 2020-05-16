@@ -61,7 +61,7 @@ void CartPathSetter::sendPath()
 #endif
   // send it to robot
   // stop joystic control
-  CartConrolPlugin::Velocity v;
+  CartConrolPlugin::VelocityWheels v;
   v.left = 0.0;
   v.right = 0.0;
   v.back = 0.0;
@@ -120,7 +120,7 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
     }while(futureObj->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout);
 
     // send zero velocity
-    CartConrolPlugin::Velocity v;
+    CartConrolPlugin::VelocityWheels v;
     v.back = 0.0;
     v.left = 0.0;
     v.right = 0.0;

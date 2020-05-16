@@ -19,7 +19,8 @@
 
 #include "kinematic/cartkinematic.h"
 
-#include <CartConrolPlugin/Velocity.h>
+#include <CartConrolPlugin/VelocityCart.h>
+#include <CartConrolPlugin/VelocityWheels.h>
 #include <CartConrolPlugin/Position.h>
 #include <CartConrolPlugin/PathMsg.h>
 
@@ -130,7 +131,7 @@ namespace gazebo {
         private: common::PID pidCartRot;
 
         // Pid variable for right path stearing
-        private common::PID pidStearing;
+        private: common::PID pidStearing;
 
         // Time for rotation pid
         private: std::clock_t time;
@@ -196,7 +197,7 @@ namespace gazebo {
             auto pathTopicName = "/" + this->model->GetName() + "/path";
             // Create a named topic, and subscribe to it.
             this->soMap["Velocity"]
-                    =  ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
+                    =  ros::SubscribeOptions::create<CartConrolPlugin::VelocityWheels>(
                             velocityTopicName,
                             1,
                             boost::bind(&OmniPlatformPlugin::OnRosMsgVel, this, _1),
@@ -235,9 +236,9 @@ namespace gazebo {
             auto reverseKinematic = "/" + this->model->GetName() + "/reverse_kinematic";
 
             this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
-            this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::Velocity>(velocityPubTopicName, 1000);
+            this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityWheels>(velocityPubTopicName, 1000);
             this->statusPub = this->rosNodePub->advertise<std_msgs::Bool>(statusPubTopicName,1000);
-            this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(reverseKinematic,1000);
+            this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityCart>(reverseKinematic,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
             // Run routine - public robot position
@@ -258,7 +259,7 @@ namespace gazebo {
         /// \brief Handle an incoming message from ROS
         /// \param[in] _msg A float value that is used to set the velocity
         /// of the Velodyne.
-        public: void OnRosMsgVel(const CartConrolPlugin::VelocityConstPtr &_msg)
+        public: void OnRosMsgVel(const CartConrolPlugin::VelocityWheelsConstPtr &_msg)
         {
             // if stop - shutdown topic and start path stearing
             if (_msg->stop)
@@ -343,14 +344,14 @@ namespace gazebo {
                 auto d = CartKinematic::distance(it[0],it[1]);
                 // Get cart velocity vector
                 auto tau = it[1] - it[0];
-                CartKinematic::Position vCart;
+                CartConrolPlugin::VelocityCart vCart;
                 vCart.x = tau.x;
                 vCart.y = tau.y;
                 vCart.angle = 0.0;
                 // Get wheel velocity vector
                 auto v = CartKinematic::getVelocity(tau);
                 // Actual cart velosity
-                CartConrolPlugin::Velocity vAct;
+                CartConrolPlugin::VelocityWheels vAct;
                 std::cout<< "d " <<std::to_string(d) << std::endl;
                 // Move robot
                 // Distance treveled
@@ -446,8 +447,8 @@ namespace gazebo {
     private: void PublisherLoop(){
             int count = 0;
             CartConrolPlugin::Position p;
-            CartConrolPlugin::Position reverseKinematic;
-            CartConrolPlugin::Velocity v;
+            CartConrolPlugin::VelocityCart reverseKinematic;
+            CartConrolPlugin::VelocityWheels v;
             //CartConrolPlugin::Velocity vDiff;
             while (ros::ok())
              {

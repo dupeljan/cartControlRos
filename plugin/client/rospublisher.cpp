@@ -14,7 +14,7 @@ RosPublisher::RosPublisher()
     // Setup topic name
     topicName = "/robot_mobile_wheel_3_omni_open_base/velocity";
     // Setup publisher
-    VelocityPub = node->advertise<CartConrolPlugin::Velocity>(topicName,1000);
+    VelocityPub = node->advertise<CartConrolPlugin::VelocityWheels>(topicName,1000);
     // Setup loop rate
     loopRate = std::unique_ptr<ros::Rate>(new ros::Rate(1000));
     // Setup velocity
@@ -35,7 +35,7 @@ RosPublisher::~RosPublisher()
     velocityPubThread.join();
 }
 
-std::string RosPublisher::velocityToString(const CartConrolPlugin::Velocity v){
+std::string RosPublisher::velocityToString(const CartConrolPlugin::VelocityWheels v){
     return  "left " + std::to_string(v.left) +'\n' +
             "right " + std::to_string(v.right) + '\n' +
             "back " + std::to_string(v.back) + '\n';
@@ -59,7 +59,7 @@ void RosPublisher::sendRoutine(std::future<void> futureObj)
        }
 }
 
-void RosPublisher::setVelocity(CartConrolPlugin::Velocity v)
+void RosPublisher::setVelocity(CartConrolPlugin::VelocityWheels v)
 {
     // Stop sendRoutine
     //Set the value in promise
@@ -75,7 +75,7 @@ void RosPublisher::setVelocity(CartConrolPlugin::Velocity v)
 
 void RosPublisher::setVelocity(QPointF p)
 {
-    CartConrolPlugin::Velocity v;
+    CartConrolPlugin::VelocityCart v;
     // Transform to velocity and send
    // p.setX(0);
     //p.setY(1);

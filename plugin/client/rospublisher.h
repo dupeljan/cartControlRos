@@ -4,7 +4,7 @@
 #include "commonheader.h"
 
 #include "ros/ros.h"
-#include <CartConrolPlugin/Velocity.h>
+#include <CartConrolPlugin/VelocityWheels.h>
 #include <QPoint>
 #include <thread>
 #include <mutex>
@@ -23,7 +23,7 @@ private:
     // Topic name
     std::string topicName;
     // Shared with sendRoutine velocity
-    CartConrolPlugin::Velocity velocity;
+    CartConrolPlugin::VelocityWheels velocity;
     // Mutex for velocity
     std::mutex velocityMutex;
     // Thread for sendRoutine
@@ -33,12 +33,12 @@ private:
     //std::future object associated with promise
     std::future<void> futureObj;
     // Velocity to string converter
-    std::string velocityToString(const CartConrolPlugin::Velocity v);
+    std::string velocityToString(const CartConrolPlugin::VelocityWheels v);
     // Routine in which velocity sending to cart
     void sendRoutine(std::future<void> futureObj);
 public:
      // Set velocity which publishing in SendRoutine
-    void setVelocity(CartConrolPlugin::Velocity v);
+    void setVelocity(CartConrolPlugin::VelocityWheels v);
     void setVelocity(QPointF p);
     void pause();
     void resume();
