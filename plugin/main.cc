@@ -344,14 +344,15 @@ namespace gazebo {
                 auto d = CartKinematic::distance(it[0],it[1]);
                 // Get cart velocity vector
                 auto tau = it[1] - it[0];
-                CartConrolPlugin::VelocityCart vCart;
-                vCart.x = tau.x;
-                vCart.y = tau.y;
-                vCart.angle = 0.0;
+                CartConrolPlugin::VelocityCart vDesiredC;
+                vDesiredC.x = tau.x;
+                vDesiredC.y = tau.y;
+                vDesiredC.angle = 0.0;
                 // Get wheel velocity vector
-                auto v = CartKinematic::getVelocity(tau);
+                CartConrolPlugin::VelocityWheels vDesiredW
+                        = CartKinematic::getVelocity(tau);
                 // Actual cart velosity
-                CartConrolPlugin::VelocityWheels vAct;
+                CartConrolPlugin::VelocityWheels vActW;
                 std::cout<< "d " <<std::to_string(d) << std::endl;
                 // Move robot
                 // Distance treveled
@@ -362,18 +363,27 @@ namespace gazebo {
                 b = before;
                 while ( s < d )
                 {
-                    this->setTargetVelocity(v.left,v.right,v.back);
+                    this->setTargetVelocity(vDesiredW.left,vDesiredW.right,vDesiredW.back);
                     // Add treveled distance
 
-                    vAct.left = this->leftJoint->GetVelocity(0);
-                    vAct.right =  this->rightJoint->GetVelocity(0);
-                    vAct.back =  this->backJoint->GetVelocity(0);
-                    auto pos = CartKinematic::getVelocityReverse(vAct);
-                    pos.angle = 0;
+                    vActW.left = this->leftJoint->GetVelocity(0);
+                    vActW.right =  this->rightJoint->GetVelocity(0);
+                    vActW.back =  this->backJoint->GetVelocity(0);
+                    auto vActC = CartKinematic::getVelocityReverse(vActW);
+                    vActC.angle = 0;
                     //// vvv convertation to unit/sec
                     // Translate vAct on v direction and oposite v direction
-
-                    s += 0.2 * CartKinematic::norm(pos) / freq;
+                    // Get cos angle between vActC and vDesiredC
+                    double vActCDits =
+                            CartKinematic::norm(vActC);
+                    double cosAngle
+                            = CartKinematic::scalarMul(vActC,vDesiredC) /
+                            ( CartKinematic::norm(vActC) * vActCDits );
+                    double vStearing = cosAngle * vActCDits;
+                    double vError = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCDits;
+                    std::cout << "Stearing " << vStearing << " error " << vError << " cos " << cosAngle <<'\n';
+                    //s += 0.2 * CartKinematic::norm(vActC) / freq;
+                    s += 0.2 * vStearing / freq;
                     // cheat
                     //a.x = this->model->RelativePose().Pos().X();
                     //a.y = this->model->RelativePose().Pos().Y();
