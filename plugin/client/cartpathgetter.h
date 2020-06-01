@@ -18,6 +18,7 @@ public slots:
     void drawAnaliticPath(std::vector<QPointF> v);
 private:
     QPointF translate(QPointF p);
+    QBrush robotBrush;
 
 };
 

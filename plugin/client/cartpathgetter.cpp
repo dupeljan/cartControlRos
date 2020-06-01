@@ -7,13 +7,13 @@
 CartPathGetter::CartPathGetter(QGraphicsView *parent)
     : CartPathAbstract(parent)
 {
-
+    robotBrush.setColor(Qt::blue);
 }
 
 void CartPathGetter::drawSimulationPos(QPointF point)
 {
     auto trPoint = translate(point);
-    this->scene->addEllipse(QRectF(trPoint.x(),trPoint.y(),1,1));
+    this->scene->addEllipse(QRectF(trPoint.x(),trPoint.y(),1,1),QPen(),robotBrush);
 }
 
 void CartPathGetter::drawAnaliticPath(std::vector<QPointF> v)

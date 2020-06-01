@@ -110,7 +110,7 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
     StatusChecker stCheck(n,statusTopicName);
     // Run subscribe spin
     stCheck.run(promise,futureObj);
-    auto rate = ros::Rate(10);
+    auto rate = ros::Rate(20000);
 
     // Publish while promise doesn't set it's value
     do
@@ -135,10 +135,10 @@ void CartPathSetter::sendPathRoutine(CartConrolPlugin::PathMsg msg)
 void CartPathSetter::StatusChecker::runThread(std::shared_ptr<std::promise<void> > p,std::shared_ptr<std::shared_future<void>> f)
 {
     auto statusPathSub = n->subscribe<std_msgs::Bool>
-            (topicName, 1000,
+            (topicName, 20000,
              boost::bind(&StatusChecker::statusSubCallback,this,
                        p, _1));
-    auto loopRate = ros::Rate(1000);
+    auto loopRate = ros::Rate(20000);
 
     // While promise doesn't set it's value
     while(f->wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)

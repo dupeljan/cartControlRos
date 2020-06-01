@@ -1,6 +1,7 @@
 #!/bin/bash
 git add plugin/cfg/*
 git add plugin/msg/*
+git add plugin/srv/*
 git add plugin/client/*
 git add add.sh
 git add *vel.cc

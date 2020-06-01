@@ -17,7 +17,12 @@
 #include <string>
 #include <ctime>
 
+
+
+
 #include "kinematic/cartkinematic.h"
+
+#include <CartConrolPlugin/PathSrv.h>
 
 #include <CartConrolPlugin/VelocityCart.h>
 #include <CartConrolPlugin/VelocityWheels.h>
@@ -57,6 +62,8 @@ std::string positionToString(const CartConrolPlugin::Position p){
 
 
 namespace gazebo {
+
+
 
     class OmniPlatformPlugin : public ModelPlugin {
         // ros members
@@ -136,9 +143,13 @@ namespace gazebo {
         // Time for rotation pid
         private: std::clock_t time;
 
+        private: common::Time simTime;
 
         // Thread for dynamic reconf server
         private: std::thread dynamicReconfThread;
+
+        // Thread for path service
+        private: std::thread pathSrvThread;
 
 
 
@@ -169,7 +180,9 @@ namespace gazebo {
 
             this->time = std::clock();
 
+            this-> simTime = this->world->SimTime();
             this->pathReceved.data = false;
+
 
 
 
@@ -192,6 +205,10 @@ namespace gazebo {
             // Create our ROS nodes
             this->rosNodeSub.reset(new ros::NodeHandle("gazebo_cart_plugin_sub"));
             this->rosNodePub.reset(new ros::NodeHandle("gazebo_cart_plugin_pub"));
+
+             // Set param for sinchronize
+            // Doesn't work
+            //this->rosNodeSub->setParam("use_sim_time",true);
 
             auto velocityTopicName = "/" + this->model->GetName() + "/velocity";
             auto pathTopicName = "/" + this->model->GetName() + "/path";
@@ -240,12 +257,15 @@ namespace gazebo {
             this->statusPub = this->rosNodePub->advertise<std_msgs::Bool>(statusPubTopicName,1000);
             this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityCart>(reverseKinematic,1000);
             // Set loop rate
-            loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(10));
+            loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(20000));
             // Run routine - public robot position
 
             this->rosPosThread =
                     std::thread(std::bind(&OmniPlatformPlugin::PublisherLoop,this));
 
+            // Create path server
+            this->pathSrvThread =
+                    std::thread(std::bind(&OmniPlatformPlugin::pathServerRoutine,this));
             ///
             ///
             ///
@@ -290,6 +310,14 @@ namespace gazebo {
            // backJoint->SetVelocityTarget(0, _msg->back / r);
         }
 
+    public:  bool onPathGet(CartConrolPlugin::PathSrv::Request &req,
+                            CartConrolPlugin::PathSrv::Response &res)
+        {
+            for( auto x : req.path)
+                ROS_INFO("%f %f",x.position.x,x.position.y);
+            res.status = true;
+            return true;
+        }
         public: void OnRosMsgPath(const CartConrolPlugin::PathMsgConstPtr &_msg)
         {
 #if DEBUG == 0
@@ -348,6 +376,7 @@ namespace gazebo {
                 vDesiredC.x = tau.x;
                 vDesiredC.y = tau.y;
                 vDesiredC.angle = 0.0;
+                auto vDesiredCNorm = CartKinematic::norm(vDesiredC);
                 // Get wheel velocity vector
                 CartConrolPlugin::VelocityWheels vDesiredW
                         = CartKinematic::getVelocity(tau);
@@ -361,6 +390,7 @@ namespace gazebo {
                 before.x = this->model->RelativePose().Pos().X();
                 before.y = this->model->RelativePose().Pos().Y();
                 b = before;
+                
                 while ( s < d )
                 {
                     this->setTargetVelocity(vDesiredW.left,vDesiredW.right,vDesiredW.back);
@@ -374,16 +404,16 @@ namespace gazebo {
                     //// vvv convertation to unit/sec
                     // Translate vAct on v direction and oposite v direction
                     // Get cos angle between vActC and vDesiredC
-                    double vActCDits =
+                    double vActCNorm =
                             CartKinematic::norm(vActC);
                     double cosAngle
                             = CartKinematic::scalarMul(vActC,vDesiredC) /
-                            ( CartKinematic::norm(vActC) * vActCDits );
-                    double vStearing = cosAngle * vActCDits;
-                    double vError = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCDits;
-                    std::cout << "Stearing " << vStearing << " error " << vError << " cos " << cosAngle <<'\n';
+                            (vActCNorm * vDesiredCNorm);
+                    double vStearing = cosAngle * vActCNorm;
+                    double vError = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCNorm;
+                    //std::cout << "Stearing " << vStearing << " error " << vError << " cos " << cosAngle <<'\n';
                     //s += 0.2 * CartKinematic::norm(vActC) / freq;
-                    s += 0.2 * vStearing / freq;
+                    s += 0.14 * 7.07 * vStearing / freq;
                     // cheat
                     //a.x = this->model->RelativePose().Pos().X();
                     //a.y = this->model->RelativePose().Pos().Y();
@@ -441,8 +471,12 @@ namespace gazebo {
             // Rotation correction
 
             auto err =   this->model->RelativePose().Rot().Yaw();
+            auto duration = this->world->SimTime().Double() - this->simTime.Double();
+
+            //std::cout << duration<< "    cTIme-> " << 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC << std::endl;
             auto rc = pidCartRot.Update(err,common::Time( 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC) );
             this->time = std::clock();
+            this->simTime = this->world->SimTime();
 #if DEBUG == 1
             std::cout << "Error:" << std::to_string(err) <<" Corrective speed:" << std::to_string(rc) << '\n';
 #endif
@@ -463,6 +497,7 @@ namespace gazebo {
             while (ros::ok())
              {
 
+             // std::cout << this->world->SimTime().Double() <<std::endl;
               // Get position
               p.x = this->model->RelativePose().Pos().X();
               p.y = this->model->RelativePose().Pos().Y();
@@ -511,7 +546,7 @@ namespace gazebo {
                this->statusPub.publish(status);
                this->reverseKinematicPub.publish(reverseKinematic);
 
-               ros::spinOnce();
+               //ros::spinOnce();
                this->loop_rate->sleep();
                ++count;
              }
@@ -527,9 +562,20 @@ namespace gazebo {
             server.setCallback(f);
 
             ROS_INFO("Spinning node");
-            ros::spin();
+            //ros::spin();
     }
 
+    private: void pathServerRoutine()
+    {
+            ros::NodeHandle n;
+            auto f = boost::bind(&OmniPlatformPlugin::onPathGet,this,_1,_2);
+            ros::ServiceServer service = n.advertiseService<CartConrolPlugin::PathSrv::Request,
+                                      CartConrolPlugin::PathSrv::Response>("pathSrv", f);
+            ROS_INFO("Start service pathSrv");
+            ros::MultiThreadedSpinner spinner(2);
+            spinner.spin();
+            //ros::spin();
+    }
     private: void callbackDynamicReconf(CartConrolPlugin::CartConfig &config, uint32_t level) {
        ROS_INFO("Reconfigure Request: P - %f I - %f D - %f level %d",
                 config.p_gain,

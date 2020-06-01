@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     sub = std::unique_ptr<RosSubscriber>(new RosSubscriber());
 
     QPushButton *sendPathButton = new QPushButton();
+    sendPathButton->setText("Send path");
     QWidget *mainWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout();
     controller = new CartControllerWidget(pub);
@@ -33,8 +34,10 @@ MainWindow::MainWindow(QWidget *parent) :
     // Add widgets to layout
     gridLayout->addWidget(setter,1,1);
     gridLayout->addWidget(getter,1,2);
+    //gridLayout->addWidget(getter,2,1);
     gridLayout->addWidget(controller,1,3);
-    gridLayout->addWidget(sendPathButton,3,1);
+
+    gridLayout->addWidget(sendPathButton,2,1);
 
     mainWidget->setLayout(gridLayout);
     setCentralWidget(mainWidget);

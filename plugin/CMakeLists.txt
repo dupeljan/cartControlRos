@@ -31,6 +31,8 @@ add_message_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES
                                         msg/VelocityWheels.msg
                                         msg/Position.msg
                                         msg/PathMsg.msg)
+add_service_files(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} FILES
+                                        srv/PathSrv.srv)
 generate_messages(DEPENDENCIES geometry_msgs)
 
 # Generate dynamic reconf
