@@ -21,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QWidget *mainWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout();
     controller = new CartControllerWidget(pub);
-    setter = new CartPathSetter(pub);
+    setter = new CartPathSetter();
     getter = new CartPathGetter();
 
     // Connecing

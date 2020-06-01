@@ -25,10 +25,10 @@ void RosSubscriber::runRoutine()
     std::unique_ptr<ros::NodeHandle> n;
     n.reset(new ros::NodeHandle("Client_subscriber"));
     auto sub = n->subscribe<CartConrolPlugin::Position>
-            (topicName, 20000,
+            (topicName, 10000,
              boost::bind(&RosSubscriber::callBack,this,_1));
 
-    auto loopRate = ros::Rate(20000);
+    auto loopRate = ros::Rate(10000);
 
     // While promise doesn't set it's value
     while(this->future.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout)
