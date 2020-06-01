@@ -102,22 +102,11 @@ namespace gazebo {
 
         private: physics::WorldPtr world;
 
-
-        /// shared status variable
-        /// true if path is receved
-        private: std_msgs::Bool pathReceved;
-
-        /// Mutex for pathReceved
-        private: std::mutex pathRecevedMutex;
-
         // Cart position publisher
         private: ros::Publisher positionPub;
 
         // Cart actual velocity publisher
         private: ros::Publisher velocityPub;
-
-        // Publisher for pathReceved
-        private: ros::Publisher statusPub;
 
         // Publisher for reveseKinematic
         private: ros::Publisher reverseKinematicPub;
@@ -181,7 +170,7 @@ namespace gazebo {
             this->time = std::clock();
 
             this-> simTime = this->world->SimTime();
-            this->pathReceved.data = false;
+
 
 
 
@@ -219,12 +208,7 @@ namespace gazebo {
                             1,
                             boost::bind(&OmniPlatformPlugin::OnRosMsgVel, this, _1),
                             ros::VoidPtr(), &this->rosQueue);
-            this->soMap["PathMsg"]
-                     =   ros::SubscribeOptions::create<CartConrolPlugin::PathMsg>(
-                            pathTopicName,
-                            1,
-                            boost::bind(&OmniPlatformPlugin::OnRosMsgPath, this, _1),
-                            ros::VoidPtr(), &this->rosQueue);
+
 
             this->subscribe("Velocity");
 
@@ -249,12 +233,10 @@ namespace gazebo {
             // Create publisher
             auto posPubTopicName = "/"+this->model->GetName() +"/pos";
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
-            auto statusPubTopicName = "/" + this->model->GetName() + "/status_path";
             auto reverseKinematic = "/" + this->model->GetName() + "/reverse_kinematic";
 
             this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
             this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityWheels>(velocityPubTopicName, 1000);
-            this->statusPub = this->rosNodePub->advertise<std_msgs::Bool>(statusPubTopicName,1000);
             this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityCart>(reverseKinematic,1000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(20000));
@@ -281,6 +263,7 @@ namespace gazebo {
         /// of the Velodyne.
         public: void OnRosMsgVel(const CartConrolPlugin::VelocityWheelsConstPtr &_msg)
         {
+            /*
             // if stop - shutdown topic and start path stearing
             if (_msg->stop)
             {
@@ -288,7 +271,7 @@ namespace gazebo {
                 this->subscribe("PathMsg");
             }
 
-
+            */
 
 #if DEBUG == 1
             // Print velocityes
@@ -315,12 +298,17 @@ namespace gazebo {
         {
             for( auto x : req.path)
                 ROS_INFO("%f %f",x.position.x,x.position.y);
+            this->rosSub.shutdown();
+            auto th =
+                    std::thread(std::bind(&OmniPlatformPlugin::OnRosMsgPath,this,req.path));
+            th.detach();
+            //OnRosMsgPath(req.path);
             res.status = true;
             return true;
         }
-        public: void OnRosMsgPath(const CartConrolPlugin::PathMsgConstPtr &_msg)
+    private: void OnRosMsgPath(const std::vector<geometry_msgs::Pose> _msg)
         {
-#if DEBUG == 0
+#if DEBUG == -1
             for (int i=0; i<_msg->path.size(); ++i)
                {
                  auto &data = _msg->path[i];
@@ -333,9 +321,6 @@ namespace gazebo {
             /// that we already receved
             /// path
 
-            this->pathRecevedMutex.lock();
-            this->pathReceved.data = true;
-            this->pathRecevedMutex.unlock();
 
 
             // Transform geometry position to
@@ -349,7 +334,7 @@ namespace gazebo {
                 points.push_back(p);
             }
             // Transform path to points
-            std::transform(_msg->path.begin(),_msg->path.end(),
+            std::transform(_msg.begin(),_msg.end(),
                            std::back_insert_iterator<std::vector<CartKinematic::PointF>>(points),
                            []( geometry_msgs::Pose pose){
                                 CartKinematic::PointF point;
@@ -446,12 +431,9 @@ namespace gazebo {
 
             std::cout << "Finish path steering\n";
 
-            this->pathRecevedMutex.lock();
-            this->pathReceved.data = false;
-            this->pathRecevedMutex.unlock();
 
             // Start velocity control
-            this->rosSub.shutdown();
+            //this->rosSub.shutdown();
             this->subscribe("Velocity");
         }
 
@@ -535,15 +517,11 @@ namespace gazebo {
                 * given as a template parameter to the advertise<>() call, as was done
                 * in the constructor above.
                 */
-               // Saferty for multythreading
-               this->pathRecevedMutex.lock();
-               std_msgs::Bool status = this->pathReceved;
-               this->pathRecevedMutex.unlock();
+
 
 
                this->positionPub.publish(p);
                this->velocityPub.publish(v);
-               this->statusPub.publish(status);
                this->reverseKinematicPub.publish(reverseKinematic);
 
                //ros::spinOnce();
