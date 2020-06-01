@@ -16,7 +16,7 @@ class CartPathSetter: public CartPathAbstract
 {
     Q_OBJECT
 public:
-    explicit CartPathSetter(QGraphicsView *parent = nullptr);
+    explicit CartPathSetter(std::shared_ptr<RosPublisher> pub, QGraphicsView *parent = nullptr);
 signals:
     // Send when user shouse path
     void pathChosen(std::vector<QPointF> p);
@@ -28,7 +28,8 @@ public slots:
     void sendPath();
 
 private:
-
+    // Publisher for velocity manipulation
+    std::shared_ptr<RosPublisher> pub;
     void clearScene();
     void sendPathRoutine(CartConrolPlugin::PathMsg msg);
 

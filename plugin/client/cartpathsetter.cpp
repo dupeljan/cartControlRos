@@ -7,10 +7,10 @@
 #include <QDebug>
 #include <iostream>
 
-CartPathSetter::CartPathSetter( QGraphicsView *parent)
+CartPathSetter::CartPathSetter(std::shared_ptr<RosPublisher> pub ,QGraphicsView *parent)
  : CartPathAbstract(parent)
 {
-
+    this->pub = pub;
 }
 
 void CartPathSetter::mousePressEvent(QMouseEvent *e)
@@ -80,11 +80,13 @@ void CartPathSetter::sendPath()
    if (client.call(srv))
    {
       ROS_INFO("Request to pthSrv succeded");
+      pub->setVelocity(QPointF(0.0,0.0));
    }
    else
    {
      ROS_INFO("Can't do request to pthSrv");
    }
+
   /*
   auto th =
         std::thread(std::bind(&CartPathSetter::sendPathRoutine, this,msg));

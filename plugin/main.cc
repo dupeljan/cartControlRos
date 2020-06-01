@@ -1,4 +1,4 @@
-#include <algorithm>
+﻿#include <algorithm>
 #include <boost/bind.hpp>
 #include <chrono>
 #include <climits>
@@ -134,11 +134,19 @@ namespace gazebo {
 
         private: common::Time simTime;
 
+        private: ros::Time rosTime;
+
         // Thread for dynamic reconf server
         private: std::thread dynamicReconfThread;
 
         // Thread for path service
         private: std::thread pathSrvThread;
+
+        // Stearing error for path correcting
+        private: double stearingErr;
+
+        // Stearing direction
+        private: CartConrolPlugin::VelocityWheels vDesiredWPerp;
 
 
 
@@ -165,12 +173,13 @@ namespace gazebo {
 
             this->pidCartRot = common::PID(50.0,25.0,6.0);
 
-            this->pidStearing = common::PID(10.0);
+            this->pidStearing = common::PID(1.0,1.0);
 
             this->time = std::clock();
 
             this-> simTime = this->world->SimTime();
 
+            this->rosTime = ros::Time::now();
 
 
 
@@ -212,15 +221,6 @@ namespace gazebo {
 
             this->subscribe("Velocity");
 
-            /*
-            auto so = ros::SubscribeOptions::create<CartConrolPlugin::Velocity>(
-                        velocityTopicName,
-                        1,
-                        boost::bind(&OmniPlatformPlugin::OnRosMsg, this, _1),
-                        ros::VoidPtr(), &this->rosQueue);
-            this->rosSub = this->rosNodeSub->subscribe(so);
-            */
-
 #if DEBUG == 1
             std::cout<<"Create topic "+ velocityTopicName +"\n";
 #endif
@@ -235,9 +235,9 @@ namespace gazebo {
             auto velocityPubTopicName = "/" + this->model->GetName() + "/actual_velocity";
             auto reverseKinematic = "/" + this->model->GetName() + "/reverse_kinematic";
 
-            this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 1000);
-            this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityWheels>(velocityPubTopicName, 1000);
-            this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityCart>(reverseKinematic,1000);
+            this->positionPub = this->rosNodePub->advertise<CartConrolPlugin::Position>(posPubTopicName, 2000);
+            this->velocityPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityWheels>(velocityPubTopicName, 2000);
+            this->reverseKinematicPub = this->rosNodePub->advertise<CartConrolPlugin::VelocityCart>(reverseKinematic, 2000);
             // Set loop rate
             loop_rate = std::unique_ptr<ros::Rate>(new ros::Rate(20000));
             // Run routine - public robot position
@@ -347,6 +347,8 @@ namespace gazebo {
             // Velocity unit per second
             double velocity = 0.1;
             auto rate = ros::Rate(freq);
+            // Reset time
+            this->rosTime = ros::Time::now();
 
             // Steer cart the way
             for(auto it = points.begin(); (it + 1) != points.end(); it++)
@@ -362,6 +364,14 @@ namespace gazebo {
                 vDesiredC.y = tau.y;
                 vDesiredC.angle = 0.0;
                 auto vDesiredCNorm = CartKinematic::norm(vDesiredC);
+                // Get perpendicular to desired movement
+                CartKinematic::PointF vDesiredCPrep;
+                auto sign = (std::signbit(tau.x*tau.y))? -1 : 1;
+                vDesiredCPrep.x = sign * tau.y;
+                vDesiredCPrep.y = - sign * tau.y;
+                this->vDesiredWPerp =
+                        CartKinematic::getVelocity(vDesiredCPrep);
+
                 // Get wheel velocity vector
                 CartConrolPlugin::VelocityWheels vDesiredW
                         = CartKinematic::getVelocity(tau);
@@ -371,6 +381,9 @@ namespace gazebo {
                 // Move robot
                 // Distance treveled
                 double s = 0.0;
+                // Error vector len
+                this->stearingErr  = 0.0;
+
                 CartKinematic::PointF before, after,b, a;
                 before.x = this->model->RelativePose().Pos().X();
                 before.y = this->model->RelativePose().Pos().Y();
@@ -378,7 +391,7 @@ namespace gazebo {
                 
                 while ( s < d )
                 {
-                    this->setTargetVelocity(vDesiredW.left,vDesiredW.right,vDesiredW.back);
+                    this->setTargetVelocity(vDesiredW.left,vDesiredW.right,vDesiredW.back,true);
                     // Add treveled distance
 
                     vActW.left = this->leftJoint->GetVelocity(0);
@@ -395,7 +408,7 @@ namespace gazebo {
                             = CartKinematic::scalarMul(vActC,vDesiredC) /
                             (vActCNorm * vDesiredCNorm);
                     double vStearing = cosAngle * vActCNorm;
-                    double vError = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCNorm;
+                    this->stearingErr = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCNorm;
                     //std::cout << "Stearing " << vStearing << " error " << vError << " cos " << cosAngle <<'\n';
                     //s += 0.2 * CartKinematic::norm(vActC) / freq;
                     s += 0.14 * 7.07 * vStearing / freq;
@@ -418,11 +431,11 @@ namespace gazebo {
             auto eps = 0.1;
             // Stop cart
             while (this->pidCartRot.GetCmd() > eps ||
-                   /*
-                   this->leftJoint->GetVelocity(0) > eps &&
-                   this->rightJoint->GetVelocity(0) > eps &&
-                   this->backJoint->GetVelocity(0) > eps
-                   */
+
+                   this->leftJoint->GetVelocity(0) > eps ||
+                   this->rightJoint->GetVelocity(0) > eps ||
+                   this->backJoint->GetVelocity(0) > eps ||
+
                    this->pidWheels.GetCmd() > std::pow(eps,2)
        ){
                 this->setTargetVelocity(0.0,0.0,0.0);
@@ -447,14 +460,23 @@ namespace gazebo {
           }
         }
         // Set target velocity to the cart
-    private: void setTargetVelocity(double left, double right, double back)
+    private: void setTargetVelocity(double left, double right, double back,bool isOnPath = false)
         {
+
+            // Add stearing impact
+            if (isOnPath){
+                auto duration =  (ros::Time::now().toNSec() - rosTime.toNSec()) / 1e9;
+                this->rosTime = ros::Time::now();
+                auto errShift = this->pidStearing.Update(this->stearingErr,common::Time(duration));
+
+                left += errShift * this->vDesiredWPerp.left;
+                right += errShift * this->vDesiredWPerp.right;
+                back += errShift * this->vDesiredWPerp.back;
+            }
+
             // Add rotation impact
             // Rotation correction
-
             auto err =   this->model->RelativePose().Rot().Yaw();
-            auto duration = this->world->SimTime().Double() - this->simTime.Double();
-
             //std::cout << duration<< "    cTIme-> " << 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC << std::endl;
             auto rc = pidCartRot.Update(err,common::Time( 1000.0 * (std::clock()-time)/ CLOCKS_PER_SEC) );
             this->time = std::clock();
