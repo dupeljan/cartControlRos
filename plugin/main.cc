@@ -43,7 +43,7 @@
 #define L 0.04 // distance between body center and wheel center
 #define r 0.01905 // wheel radius
 #define pi2 6.28318530717958623199592693708837032318115234375 // long double two = 2; long double mOne = -1; printf("%1.70Lf\n", (long double) two * acos(mOne));
-
+#define pi 3.1415926535897932
 #define DEBUG 0 // send debug info to std::out
 #define DYNAMIC_PID_RECONFIG_ENABLE 1 // Enable dynamic reconfig server for pid values
 
@@ -173,7 +173,7 @@ namespace gazebo {
 
             this->pidCartRot = common::PID(50.0,25.0,6.0);
 
-            this->pidStearing = common::PID(1.0,1.0);
+            this->pidStearing = common::PID(9.0,3.0);//25
 
             this->time = std::clock();
 
@@ -322,7 +322,8 @@ namespace gazebo {
             /// path
 
 
-
+            // Reverse kinematic pos
+            CartConrolPlugin::Position posRK;
             // Transform geometry position to
             // CartKinematic::PointF
             std::vector<CartKinematic::PointF> points;
@@ -332,6 +333,9 @@ namespace gazebo {
                 p.x = this->model->RelativePose().Pos().X();
                 p.y = this->model->RelativePose().Pos().Y();
                 points.push_back(p);
+
+                posRK.x = p.x;
+                posRK.y = p.y;
             }
             // Transform path to points
             std::transform(_msg.begin(),_msg.end(),
@@ -346,6 +350,8 @@ namespace gazebo {
             int freq = 1000;
             // Velocity unit per second
             double velocity = 0.1;
+            // Coef to manipulate turning distance
+            double turnSrink = 0.04;
             auto rate = ros::Rate(freq);
             // Reset time
             this->rosTime = ros::Time::now();
@@ -367,8 +373,11 @@ namespace gazebo {
                 // Get perpendicular to desired movement
                 CartKinematic::PointF vDesiredCPrep;
                 auto sign = (std::signbit(tau.x*tau.y))? -1 : 1;
-                vDesiredCPrep.x = sign * tau.y;
-                vDesiredCPrep.y = - sign * tau.y;
+                sign *= (std::signbit(tau.y))? -1: 1;
+                vDesiredCPrep.x = -sign * tau.y;
+                vDesiredCPrep.y = sign * tau.x;
+                std::cout << "Desired" << tau.x << " " << tau.y << std::endl;
+                std::cout << "Norm" << vDesiredCPrep.x  << " " << vDesiredCPrep.y << std::endl;
                 this->vDesiredWPerp =
                         CartKinematic::getVelocity(vDesiredCPrep);
 
@@ -388,8 +397,19 @@ namespace gazebo {
                 before.x = this->model->RelativePose().Pos().X();
                 before.y = this->model->RelativePose().Pos().Y();
                 b = before;
-                
-                while ( s < d )
+
+                // Compute place where cart
+                // must turning
+                double dDesired = d;
+                if( (it + 2) != points.end())
+                {
+                   auto angle =
+                           CartKinematic::angleOpositeBC(it[1],it[0],it[2]);
+                   std::cout << d  << ' ' << angle << std::endl;
+                    dDesired -= turnSrink * (pi -  std::abs(angle));
+
+                }
+                while ( s < dDesired )
                 {
                     this->setTargetVelocity(vDesiredW.left,vDesiredW.right,vDesiredW.back,true);
                     // Add treveled distance
@@ -408,7 +428,25 @@ namespace gazebo {
                             = CartKinematic::scalarMul(vActC,vDesiredC) /
                             (vActCNorm * vDesiredCNorm);
                     double vStearing = cosAngle * vActCNorm;
-                    this->stearingErr = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCNorm;
+                    // Compute error
+                    //this->stearingErr = std::sqrt( 1 - std::pow( cosAngle, 2 ) ) * vActCNorm;
+                    {
+
+                        //auto sign  = (std::signbit(it[1].x - posRK.x))? -1 : 1;
+                        auto sign = (it[0].y > it[1].y)? 1 : -1;
+                        sign *= (it[0].x <= it[1].x && it[0].y >= it[1].y ||
+                                 it[0].x >= it[1].x && it[0].y <= it[1].y)? -1 : 1;
+                        this->stearingErr = sign * CartKinematic::signDistanceToLine(it[0],it[1],CartKinematic::PointF(posRK.x,posRK.y));
+                       // std::cout << this->stearingErr << std::endl;
+                      /*
+                        auto v = vDesiredCPrep;
+                        v.x = sign * v.x;
+                        v.y = sign * v.y;
+                        this->vDesiredWPerp =
+                                CartKinematic::getVelocity(v);
+                                */
+
+                    }
                     //std::cout << "Stearing " << vStearing << " error " << vError << " cos " << cosAngle <<'\n';
                     //s += 0.2 * CartKinematic::norm(vActC) / freq;
                     s += 0.14 * 7.07 * vStearing / freq;
@@ -418,6 +456,20 @@ namespace gazebo {
                     //s += CartKinematic::distance(b,a);
                     //b = a;
                     // Sleep for next iteration
+
+                    // Compute new pos
+                    //posRK.x += 0.14 * 7.07 * vActC.x /(double) freq;
+                    //posRK.y += 0.14 * 7.07 * vActC.y /(double) freq;
+                    posRK.x = this->model->RelativePose().Pos().X();
+                    posRK.y = this->model->RelativePose().Pos().Y();
+                    /*
+                    std::cout << "dist " << CartKinematic::distance(
+                                      CartKinematic::PointF(posRK.x,posRK.y),
+                                        CartKinematic::PointF(this->model->RelativePose().Pos().X(),
+                                                              this->model->RelativePose().Pos().Y())) << std::endl;
+                    */
+                   // std::cout << "POS rk" << posRK.x << " " << posRK.y << std::endl;
+                   // std::cout << "POS real" <<this->model->RelativePose().Pos().X()<< " " << this->model->RelativePose().Pos().Y() << std::endl;
 
                     rate.sleep();
                 }
@@ -468,7 +520,8 @@ namespace gazebo {
                 auto duration =  (ros::Time::now().toNSec() - rosTime.toNSec()) / 1e9;
                 this->rosTime = ros::Time::now();
                 auto errShift = this->pidStearing.Update(this->stearingErr,common::Time(duration));
-
+                //std::cout << this->stearingErr << ' ' << duration << std::endl;
+                //errShift = 3.0;
                 left += errShift * this->vDesiredWPerp.left;
                 right += errShift * this->vDesiredWPerp.right;
                 back += errShift * this->vDesiredWPerp.back;
