@@ -11,6 +11,8 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+
+    // Setup all widgets
     ui->setupUi(this);
 
     pub = std::shared_ptr<RosPublisher>(new RosPublisher());
@@ -24,34 +26,26 @@ MainWindow::MainWindow(QWidget *parent) :
     setter = new CartPathSetter(pub);
     getter = new CartPathGetter();
 
-    // Connecing
+    // Connect widgets to each other
     connect(sendPathButton,SIGNAL(clicked()),setter,SLOT(sendPath()));
     connect(setter,SIGNAL(pathChosen(std::vector<QPointF>)),getter,SLOT(drawAnaliticPath(std::vector<QPointF>)));
     connect(sub.get(),SIGNAL(getPos(QPointF)),getter,SLOT(drawSimulationPos(QPointF)));
 
-    // Run subscribing
-    //controller->setLayout(ui->centralWidget->layout());
+
     // Add widgets to layout
     gridLayout->addWidget(setter,1,1);
     gridLayout->addWidget(getter,1,2);
-    //gridLayout->addWidget(getter,2,1);
     gridLayout->addWidget(controller,1,3);
 
     gridLayout->addWidget(sendPathButton,2,1);
 
     mainWidget->setLayout(gridLayout);
     setCentralWidget(mainWidget);
-    //ui->centralWidget->layout()->addWidget(new CartControllerWidget());
 
-
-
-   // connect(ui->graphicsView,SIGNAL(mousePress(QMouseEvent*)),SLOT(plotClicked(QMouseEvent *)));
 }
 
 MainWindow::~MainWindow()
 {
-    //setter->deleteLater();
-    //getter->deleteLater();
     delete ui;
 }
 

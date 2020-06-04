@@ -29,8 +29,12 @@ public slots:
 
 
 private:
+
+    // Run subsriber loop to listen topic
     void runRoutine();
-    void callBack(const CartConrolPlugin::Position::ConstPtr &msg);
+
+    // Callback for subscriber
+    void callBack(const CartControlPlugin::Position::ConstPtr &msg);
     std::thread runThread;
     std::string topicName;
     std::promise<void> promise;

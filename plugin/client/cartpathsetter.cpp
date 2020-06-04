@@ -15,10 +15,14 @@ CartPathSetter::CartPathSetter(std::shared_ptr<RosPublisher> pub ,QGraphicsView 
 
 void CartPathSetter::mousePressEvent(QMouseEvent *e)
 {
+    // If left button click
     if(e->button() == Qt::LeftButton)
     {
+        // Add new point to path
         auto pt = mapToScene(e->pos());
         this->path.push_back(pt);
+
+        // Draw all path
         if ( path.size() == 1){
             this->scene->addEllipse(QRectF(pt.x(),pt.y(),1,1));
         }
@@ -28,6 +32,7 @@ void CartPathSetter::mousePressEvent(QMouseEvent *e)
             this->scene->addLine(QLineF(r[0],r[1]));
         }
     }
+    // If right button click - clear scene
     else if(e->button() == Qt::RightButton)
         clearScene();
 }
@@ -46,6 +51,7 @@ void CartPathSetter::sendPath()
 {
   // Send path to getter
   emit pathChosen(path);
+
   // Translate plot coords to simulation coords
   std::transform(path.begin(),path.end(),path.begin(),
                  [this](QPointF p){
@@ -58,15 +64,12 @@ void CartPathSetter::sendPath()
   for(auto point : path)
       qDebug((std::to_string( point.x() ) + ' ' + std::to_string( point.y() ) + '\n').c_str());
 #endif
-  // send it to robot
-  // stop joystic control
 
 
-
-
+   // Connect to  pathSrv service
    auto n = std::unique_ptr<ros::NodeHandle>(new ros::NodeHandle());
-   ros::ServiceClient client = n->serviceClient<CartConrolPlugin::PathSrv>("pathSrv");
-   CartConrolPlugin::PathSrv srv;
+   ros::ServiceClient client = n->serviceClient<CartControlPlugin::PathSrv>("pathSrv");
+   CartControlPlugin::PathSrv srv;
 
    // Copy path to request
    geometry_msgs::Pose pose;
@@ -77,6 +80,7 @@ void CartPathSetter::sendPath()
      srv.request.path.push_back(pose);
    }
 
+   // Get answer and log it
    if (client.call(srv))
    {
       ROS_INFO("Request to pthSrv succeded");
@@ -87,11 +91,6 @@ void CartPathSetter::sendPath()
      ROS_INFO("Can't do request to pthSrv");
    }
 
-  /*
-  auto th =
-        std::thread(std::bind(&CartPathSetter::sendPathRoutine, this,msg));
-  th.detach();
-*/
   // Clear scene
   this->clearScene();
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
-project(CartConrolPlugin)
+project(CartControlPlugin)
 
 # Generate code from our own custom messages
 # find_package catkin and genmsg, required for message generation macros

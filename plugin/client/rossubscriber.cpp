@@ -7,7 +7,6 @@ RosSubscriber::RosSubscriber()
     this->future = this->promise.get_future();
     this->runThread =
          std::thread(std::bind(&RosSubscriber::runRoutine,this));
-    //th.detach();
 }
 
 
@@ -24,10 +23,11 @@ void RosSubscriber::runRoutine()
     // Subsribe
     std::unique_ptr<ros::NodeHandle> n;
     n.reset(new ros::NodeHandle("Client_subscriber"));
-    auto sub = n->subscribe<CartConrolPlugin::Position>
+    auto sub = n->subscribe<CartControlPlugin::Position>
             (topicName, 10000,
              boost::bind(&RosSubscriber::callBack,this,_1));
 
+    // Setup loop rate
     auto loopRate = ros::Rate(10000);
 
     // While promise doesn't set it's value
@@ -40,7 +40,7 @@ void RosSubscriber::runRoutine()
     n->shutdown();
 }
 
-void RosSubscriber::callBack(const CartConrolPlugin::Position::ConstPtr &msg)
+void RosSubscriber::callBack(const CartControlPlugin::Position::ConstPtr &msg)
 {
     QPointF p;
     p.setX(msg->x);

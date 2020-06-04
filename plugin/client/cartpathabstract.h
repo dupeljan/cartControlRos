@@ -22,7 +22,11 @@ public slots:
 protected:
     QGraphicsScene * scene;
     std::vector<QPointF> path;
+
+    // Size of Gazebo scine
     QSizeF simulationFieldSize;
+
+    // Gazebo coordinates in centre of the scene
     QPointF simulationStartPoint;
 };
 

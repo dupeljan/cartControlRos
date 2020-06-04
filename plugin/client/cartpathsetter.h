@@ -31,7 +31,7 @@ private:
     // Publisher for velocity manipulation
     std::shared_ptr<RosPublisher> pub;
     void clearScene();
-    void sendPathRoutine(CartConrolPlugin::PathMsg msg);
+    void sendPathRoutine(CartControlPlugin::PathMsg msg);
 
 
 

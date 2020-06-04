@@ -23,6 +23,9 @@ public slots:
     void mouseMoveEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *e);
 private:
+    void sendSpeed(QMouseEvent *e);
+
+    int centreCircleRadiusSqr;
     QPointF posToVector(QPointF p);
     QGraphicsScene * scene;
     std::shared_ptr<RosPublisher> pub;
