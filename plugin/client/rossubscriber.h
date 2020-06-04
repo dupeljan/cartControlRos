@@ -12,7 +12,7 @@
 #include <future>
 #include <boost/bind.hpp>
 
-#include "CartConrolPlugin/Position.h"
+#include "CartControlPlugin/Position.h"
 
 class RosSubscriber : public QObject
 {

@@ -9,7 +9,7 @@
 #include "commonheader.h"
 #include "cartpathabstract.h"
 #include "rospublisher.h"
-#include "CartConrolPlugin/PathMsg.h"
+#include "CartControlPlugin/PathMsg.h"
 #include "std_msgs/Bool.h"
 
 class CartPathSetter: public CartPathAbstract

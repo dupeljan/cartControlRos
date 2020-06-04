@@ -2,8 +2,8 @@
 #define CARTKINEMATIC_H
 
 
-#include <CartConrolPlugin/VelocityWheels.h>
-#include <CartConrolPlugin/VelocityCart.h>
+#include <CartControlPlugin/VelocityWheels.h>
+#include <CartControlPlugin/VelocityCart.h>
 #include <vector>
 #include <math.h>
 

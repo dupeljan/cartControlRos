@@ -4,7 +4,7 @@
 #include "commonheader.h"
 
 #include "ros/ros.h"
-#include <CartConrolPlugin/VelocityWheels.h>
+#include <CartControlPlugin/VelocityWheels.h>
 #include <QPoint>
 #include <thread>
 #include <mutex>

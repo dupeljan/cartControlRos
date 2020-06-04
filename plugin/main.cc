@@ -19,15 +19,15 @@
 
 #include "kinematic/cartkinematic.h"
 
-#include <CartConrolPlugin/PathSrv.h>
+#include <CartControlPlugin/PathSrv.h>
 
-#include <CartConrolPlugin/VelocityCart.h>
-#include <CartConrolPlugin/VelocityWheels.h>
-#include <CartConrolPlugin/Position.h>
-#include <CartConrolPlugin/PathMsg.h>
+#include <CartControlPlugin/VelocityCart.h>
+#include <CartControlPlugin/VelocityWheels.h>
+#include <CartControlPlugin/Position.h>
+#include <CartControlPlugin/PathMsg.h>
 
 #include <dynamic_reconfigure/server.h>
-#include <CartConrolPlugin/CartConfig.h>
+#include <CartControlPlugin/CartConfig.h>
 
 #include <thread>
 #include "ros/ros.h"

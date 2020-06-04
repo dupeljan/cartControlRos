@@ -2,7 +2,7 @@
 #include "rospublisher.h"
 #include "geometry_msgs/Pose.h"
 
-#include <CartConrolPlugin/PathSrv.h>
+#include <CartControlPlugin/PathSrv.h>
 #include <algorithm>
 #include <QDebug>
 #include <iostream>
