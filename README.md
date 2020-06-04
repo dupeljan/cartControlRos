@@ -1,5 +1,5 @@
 # cartControlRos
-
+![Cart control client](images/client.png)
 Control plugin for [omni-wheel SDF cart](https://github.com/GuiRitter/OpenBase)
 
 # Requiremets
