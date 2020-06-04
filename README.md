@@ -21,6 +21,12 @@ libmain.so -plugin lib ( cart integration instruction [here](https://github.com/
 CartControlPlugin/client - client executable
 
 # Usage
+
+To run client you must
++ run `roscore`
++ run `rosparam set use_sim_time true` for synchronization
++ run `rosrun gazebo_ros gazebo` and put robot inside simulation
+
 There are three widgets (from left to right)
 + Path setter
 + Path getter
@@ -29,5 +35,6 @@ There are three widgets (from left to right)
 Move mouse [like this](https://www.youtube.com/watch?v=Phsat1QcTdI) on the joystick to move robot
 
 Click on the path setter to setup path, click "Send path" button to send it to the plugin 
+
 
 
