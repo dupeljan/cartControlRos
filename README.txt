@@ -67,6 +67,8 @@ roscore
 rosparam set use_sim_time true
 3) Запускаем gazebo
 rosrun gazebo_ros gazebo
+
+Код находится в открытом доступе: https://github.com/dupeljan/cartControlRos
 4) Добавляем робота в симуляцию из списка имеющихся объектов
 5) Запускаем client и управляем роботом
 
